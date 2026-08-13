@@ -30,33 +30,6 @@
 
 
 
-  //account button
-  domReadyPromise
-    .then(() => {
-      $("#account-button")
-        .click(function() {
-          getAuthToken({interactive: true})
-            .then(token => brapi.tabs.create({url: config.webAppUrl + "/premium-voices.html?t=" + token}))
-            .catch(handleError)
-          return false;
-        })
-      $("#logout-button")
-        .click(function() {
-          clearAuthToken()
-          return false;
-        })
-    })
-
-  rxjs.combineLatest([
-      observeSetting("authToken").pipe(
-        rxjs.switchMap(token => token ? getAccountInfo(token) : Promise.resolve(null))
-      ),
-      domReadyPromise
-    ])
-    .subscribe(([account]) => showAccountInfo(account))
-
-
-
   //hotkey
   domReadyPromise
     .then(() => {
@@ -210,9 +183,7 @@
   //voiceTest
   const demoSpeech = {
     get(lang) {
-      return this[lang] || (
-        this[lang] = ajaxGet(config.serviceUrl + "/read-aloud/get-demo-speech-text/" + lang).then(JSON.parse)
-      )
+      return Promise.resolve({text: "This is a sample of the selected voice reading aloud."})
     }
   }
   const voiceTestSubject = new rxjs.Subject()
@@ -378,28 +349,6 @@
     if (/^{/.test(err.message)) {
       var errInfo = JSON.parse(err.message);
       $("#status").html(formatError(errInfo)).parent().show();
-      $("#status a").click(function() {
-        switch ($(this).attr("href")) {
-          case "#sign-in":
-            getAuthToken({interactive: true})
-              .then(function(token) {
-                if (token) {
-                  $("#test-voice").click();
-                  getAccountInfo(token).then(showAccountInfo);
-                }
-              })
-              .catch(function(err) {
-                $("#status").text(err.message).parent().show();
-              })
-            break;
-          case "#auth-wavenet":
-            brapi.permissions.request(config.wavenetPerms)
-              .then(function(granted) {
-                if (granted) bgPageInvoke("authWavenet");
-              })
-            break;
-        }
-      })
     }
     else if (config.browserId == "opera" && /locked fullscreen/.test(err.message)) {
       $("#status").html("Click <a href='#open-player-tab'>here</a> to start read aloud.").parent().show()
@@ -422,18 +371,6 @@
       $("#status").text(err.message).parent().show();
     }
   }
-
-  function showAccountInfo(account) {
-    if (account) {
-      $("#account-email").text(account.email);
-      $("#account-info").show();
-    }
-    else {
-      $("#account-info").hide();
-    }
-  }
-
-
 
   function createSlider(elem, {onChange, onSlideChange}) {
     var min = $(elem).data("min") || 0;

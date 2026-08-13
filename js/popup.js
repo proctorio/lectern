@@ -60,7 +60,6 @@ async function init() {
   $("#toggle-dark-mode").click(toggleDarkMode);
 
   refreshSize();
-  checkAnnouncements();
 
   const {state} = await bgPageInvoke("getPlaybackState")
   if (state == "PAUSED" || state == "STOPPED") onPlay()
@@ -90,24 +89,6 @@ function handleError(err) {
               }
             })
           break;
-        case "#sign-in":
-          getAuthToken({interactive: true})
-            .then(function(token) {
-              if (token) $("#btnPlay").click();
-            })
-            .catch(function(err) {
-              $("#status").text(err.message).show();
-            })
-          break;
-        case "#auth-wavenet":
-          brapi.permissions.request(config.wavenetPerms)
-            .then(function(granted) {
-              if (granted) bgPageInvoke("authWavenet");
-            })
-          break;
-        case "#open-pdf-viewer":
-          brapi.tabs.create({url: config.pdfViewerUrl})
-          break
       }
     })
   }
@@ -347,47 +328,6 @@ function refreshSize() {
       default: return [750, 450];
     }
   }
-}
-
-function checkAnnouncements() {
-  var now = new Date().getTime();
-  getSettings(["announcement"])
-    .then(function(settings) {
-      var ann = settings.announcement;
-      if (ann && ann.expire > now)
-        return ann;
-      else
-        return ajaxGet(config.serviceUrl + "/read-aloud/announcement")
-          .then(JSON.parse)
-          .then(function(result) {
-            result.expire = now + 6*3600*1000;
-            if (ann && result.id == ann.id) {
-              result.lastShown = ann.lastShown;
-              result.disabled = ann.disabled;
-            }
-            updateSettings({announcement: result});
-            return result;
-          })
-    })
-    .then(function(ann) {
-      if (ann.text && !ann.disabled) {
-        if (!ann.lastShown || now-ann.lastShown > ann.period*60*1000) {
-          showAnnouncement(ann);
-          ann.lastShown = now;
-          updateSettings({announcement: ann});
-        }
-      }
-    })
-}
-
-function showAnnouncement(ann) {
-  var html = escapeHtml(ann.text).replace(/\[(.*?)\]/g, "<a target='_blank' href='" + ann.link + "'>$1</a>").replace(/\n/g, "<br/>");
-  $("#footer").html(html).addClass("announcement");
-  if (ann.disableIfClick)
-    $("#footer a").click(function() {
-      ann.disabled = true;
-      updateSettings({announcement: ann});
-    })
 }
 
 function toggleDarkMode() {
