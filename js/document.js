@@ -253,20 +253,10 @@ function Doc(source, onEnd) {
 
   function detectLanguageOf(text) {
     if (text.length < 100) {
-      //too little text, use cloud detection for improved accuracy
-      return serverDetectLanguage(text)
-        .then(function(result) {
-          return result || browserDetectLanguage(text)
-        })
-        .then(function(lang) {
-          //exclude commonly misdetected languages
-          return ["cy", "eo"].includes(lang) ? null : lang
-        })
+      //too little text for reliable detection, fall back to the declared page lang
+      return Promise.resolve(null);
     }
-    return browserDetectLanguage(text)
-      .then(function(result) {
-        return result || serverDetectLanguage(text);
-      })
+    return browserDetectLanguage(text);
   }
 
   function browserDetectLanguage(text) {
@@ -284,30 +274,6 @@ function Doc(source, onEnd) {
         return null;
       }
     })
-  }
-
-  async function serverDetectLanguage(text) {
-    try {
-      const service = await rxjs.firstValueFrom(fasttextObservable)
-      if (!service) throw new Error("FastText service unavailable")
-      const [prediction] = await service.sendRequest("detectLanguage", {text})
-      return prediction?.language
-    }
-    catch (err) {
-      console.error(err)
-
-      return ajaxPost(config.serviceUrl + "/read-aloud/detect-language", {text: text}, "json")
-        .then(JSON.parse)
-        .then(function(res) {
-          var result = Array.isArray(res) ? res[0] : res
-          if (result && result.language && result.language != "und") return result.language
-          else return null
-        })
-        .catch(function(err) {
-          console.error(err)
-          return null
-        })
-    }
   }
 
   async function getSpeech(texts) {
