@@ -216,17 +216,6 @@ function handleHeadlessError(err) {
   //TODO: let user knows somehow
 }
 
-async function openPdfViewer(tabId, pdfUrl) {
-  const perms = {
-    origins: ["http://*/", "https://*/"]
-  }
-  if (!await brapi.permissions.contains(perms)) {
-    throw new Error(JSON.stringify({code: "error_add_permissions", perms: perms}))
-  }
-  await setTabUrl(tabId, brapi.runtime.getURL("pdf-viewer.html?url=" + encodeURIComponent(pdfUrl)))
-  await new Promise(f => handlers.pdfViewerCheckIn = f)
-}
-
 async function contentScriptAlreadyInjected(tab, frameId) {
   const items = await brapi.scripting.executeScript({
     target: {

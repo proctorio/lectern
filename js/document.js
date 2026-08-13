@@ -34,21 +34,6 @@ function TabSource() {
         sendToSource = sendToContentScript.bind(null, tabId)
         return sendToSource({method: "getDocumentInfo"})
       }
-      else if (uri.startsWith("epubreader:")) {
-        const extensionId = uri.substr(11)
-        sendToSource = sendToEpubReader.bind({}, extensionId)
-        return sendToSource({method: "getDocumentInfo"})
-          .then(res => {
-            if (!res.success) throw new Error("Failed to get EPUB document info")
-            if (res.lang && !/^[a-z][a-z](-[A-Z][A-Z])?$/.test(res.lang)) res.lang = null
-            if (res.lang) res.detectedLang = res.lang   //prevent lang detection
-            return res
-          })
-      }
-      else if (uri.startsWith("pdfviewer:")) {
-        sendToSource = sendToPdfViewer
-        return sendToSource({method: "getDocumentInfo"})
-      }
       else throw new Error("Invalid source")
     })
     .finally(function() {
@@ -88,42 +73,6 @@ function TabSource() {
     else return result
   }
 
-  async function sendToEpubReader(extId, message) {
-    if (this.currentPage == null) this.currentPage = 0
-    switch (message.method) {
-      case "getDocumentInfo": return brapi.runtime.sendMessage(extId, {name: "getDocumentInfo"})
-      case "getCurrentIndex": return this.currentPage
-      case "getTexts": return getTexts.apply(this, message.args)
-      default: throw new Error("Bad method")
-    }
-    async function getTexts(index) {
-      var res = {success: true, paged: true}
-      for (; this.currentPage<index; this.currentPage++) res = await brapi.runtime.sendMessage(extId, {name: "pageForward"})
-      for (; this.currentPage>index; this.currentPage--) res = await brapi.runtime.sendMessage(extId, {name: "pageBackward"})
-      if (!res.success) throw new Error("Failed to flip EPUB page");
-      res = res.paged ? await brapi.runtime.sendMessage(extId, {name: "getPageText"}) : {success: true, text: null}
-      if (!res.success) throw new Error("Failed to get EPUB text");
-      return res.text && parseXhtml(res.text)
-    }
-    function parseXhtml(xml) {
-      const dom = new DOMParser().parseFromString(xml, "text/xml");
-      const nodes = dom.body.querySelectorAll("h1, h2, h3, h4, h5, h6, p");
-      return Array.prototype.slice.call(nodes)
-        .map(node => node.innerText && node.innerText.trim().replace(/\r?\n/g, " "))
-        .filter(text => text)
-    }
-  }
-
-  async function sendToPdfViewer(message) {
-    message.dest = "pdfViewer"
-    const result = await brapi.runtime.sendMessage(message)
-      .catch(err => {
-        if (/^(A listener indicated|Could not establish)/.test(err.message)) throw new Error(err.message + " " + message.method)
-        throw err
-      })
-    if (result && result.error) throw result.error
-    else return result
-  }
 }
 
 

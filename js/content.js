@@ -33,23 +33,12 @@
       else return ["js/content/google-drive-preview.js"];
     }
     else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
-    else if (/^read\.amazon\./.test(location.hostname)) return ["js/content/kindle-book.js"];
     else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
     else if (location.hostname.endsWith("acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
     else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
     else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
     else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
-    else if (location.hostname == "www.webnovel.com" && location.pathname.startsWith("/book/")) return ["js/content/webnovel.js"];
     else if (location.hostname == "archiveofourown.org") return ["js/content/archiveofourown.js"];
-    else if (location.hostname == "chat.openai.com") return ["js/content/chatgpt.js"];
-    else if (location.pathname.match(/readaloud\.html$/)
-      || location.pathname.match(/\.pdf$/)
-      || $("embed[type='application/pdf']").length
-      || $("iframe[src*='.pdf']").length) return ["js/content/pdf-doc.js"];
-    else if (/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)
-        && location.port === "1122"
-        && location.protocol === "http:"
-        && location.pathname === "/bookshelf/index.html") return  ["js/content/yd-app-web.js"];
     else return ["js/content/html-doc.js"];
   }
 
