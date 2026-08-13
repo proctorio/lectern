@@ -8,16 +8,6 @@ registerMessageListener("popup", {
   }
 })
 
-const engineInitializingSubject = new rxjs.Subject()
-engineInitializingSubject
-  .pipe(
-    rxjs.distinctUntilChanged()
-  )
-  .subscribe(engine => {
-    if (engine) $("#status").text(`${engine} TTS engine initializing...`).show()
-    else $("#status").hide()
-  })
-
 $(function() {
   if (queryString.isPopup) $("body").addClass("is-popup")
   else getCurrentTab().then(function(currentTab) {return updateSettings({readAloudTab: currentTab.id})})
@@ -118,9 +108,6 @@ function handleError(err) {
         case "#open-pdf-viewer":
           brapi.tabs.create({url: config.pdfViewerUrl})
           break
-        case "#connect-phone":
-          location.href = "connect-phone.html"
-          break
       }
     })
   }
@@ -161,7 +148,6 @@ async function updateButtons() {
   var playbackErr = stateInfo.playbackError
 
   if (playbackErr) handleError(playbackErr)
-  engineInitializingSubject.next(state == "LOADING" && speech?.engine)
 
   $("#imgLoading").toggle(state == "LOADING");
   $("#btnSettings").toggle(state == "STOPPED");

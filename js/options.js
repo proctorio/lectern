@@ -75,10 +75,6 @@
           var voiceName = $(this).val();
           if (voiceName == "@custom") brapi.tabs.create({url: "custom-voices.html"});
           else if (voiceName == "@languages") brapi.tabs.create({url: "languages.html"});
-          else if (voiceName == "@premium") brapi.tabs.create({url: "premium-voices.html"});
-          else if (voiceName == "@piper") bgPageInvoke("managePiperVoices").catch(console.error)
-          else if (voiceName == "@supertonic") bgPageInvoke("manageSupertonicVoices").catch(console.error)
-          else if (voiceName == "@nghitts") bgPageInvoke("manageNghiTtsVoices").catch(console.error)
           else updateSettings({voiceName})
         });
       $("#languages-edit-button")
@@ -101,14 +97,6 @@
     .subscribe(([voiceName]) => {
       $("#voices").val(voiceName || "")
     })
-
-  rxjs.combineLatest(
-    observeSetting("voiceName"),
-    observeSetting("gcpCreds"),
-    domReadyPromise
-  ).subscribe(([voiceName, gcpCreds]) => {
-    $("#voice-info").toggle(!!voiceName && isGoogleWavenet({voiceName}) && !gcpCreds)
-  })
 
 
 
@@ -151,7 +139,7 @@
 
   rxjs.combineLatest([observeSetting("voiceName"), rateObservable, domReadyPromise])
     .subscribe(([voiceName, rate]) => {
-      $("#rate-warning").toggle((!voiceName || isNativeVoice({voiceName})) && rate > 2)
+      $("#rate-warning").toggle(rate > 2)
     })
 
 
@@ -325,23 +313,15 @@
         const voiceLanguages = getVoiceLanguages(voice)
         return !voiceLanguages
           || voiceLanguages.map(parseLang).some(({ lang }) => selectedLangs.includes(lang))
-          || isPiperVoice(voice)
-          || isSupertonicVoice(voice)
-          || isNghiTtsVoice(voice)
-          || isOpenai(voice)
       });
 
-    //group by standard/premium
+    //group by offline/standard
     var groups = Object.assign({
-        experimental: [],
         offline: [],
-        premium: [],
         standard: [],
       },
       voices.groupBy(function(voice) {
-        if (isPiperVoice(voice) || isSupertonicVoice(voice) || isNghiTtsVoice(voice)) return "experimental"
         if (isOfflineVoice(voice)) return "offline"
-        if (isPremiumVoice(voice)) return "premium";
         return "standard"
       }))
     for (var name in groups) groups[name].sort(voiceSorter);
@@ -357,32 +337,6 @@
         .appendTo(offline)
     }
 
-    //create experimental group
-    $("<optgroup>").appendTo("#voices")
-    const experimental = $("<optgroup>")
-      .attr("label", brapi.i18n.getMessage("options_voicegroup_experimental"))
-      .appendTo("#voices")
-    for (const voice of groups.experimental) {
-      $("<option>")
-        .val(voice.voiceName)
-        .text(voice.voiceName)
-        .appendTo(experimental)
-    }
-    $("<option>")
-      .val("@piper")
-      .text(brapi.i18n.getMessage("options_enable_piper_voices"))
-      .appendTo(experimental)
-    $("<option>")
-      .val("@supertonic")
-      .text(brapi.i18n.getMessage("options_enable_supertonic_voices"))
-      .appendTo(experimental)
-    if (!selectedLangs || selectedLangs.includes('vi')) {
-      $("<option>")
-        .val("@nghitts")
-        .text(brapi.i18n.getMessage("options_enable_nghitts_voices") || "Install NghiTTS voices...")
-        .appendTo(experimental)
-    }
-
     //create the standard optgroup
     $("<optgroup>").appendTo($("#voices"))
     var standard = $("<optgroup>")
@@ -393,18 +347,6 @@
         .val(voice.voiceName)
         .text(voice.voiceName)
         .appendTo(standard);
-    });
-
-    //create the premium optgroup
-    $("<optgroup>").appendTo($("#voices"));
-    var premium = $("<optgroup>")
-      .attr("label", brapi.i18n.getMessage("options_voicegroup_premium"))
-      .appendTo($("#voices"));
-    groups.premium.forEach(function(voice) {
-      $("<option>")
-        .val(voice.voiceName)
-        .text(voice.voiceName)
-        .appendTo(premium);
     });
 
     //create the additional optgroup
@@ -423,17 +365,7 @@
   }
 
   function voiceSorter(a, b) {
-    function getWeight(voice) {
-      var weight = 0
-      //native voices should appear before non-natives in Standard group
-      if (!isNativeVoice(voice)) weight += 10
-      //ReadAloud Generic Voice should appear first among the non-natives
-      if (!isReadAloudCloud(voice)) weight += 1
-      //UseMyPhone should appear last in Offline group
-      if (isUseMyPhone(voice)) weight += 1
-      return weight
-    }
-    return getWeight(a)-getWeight(b) || a.voiceName.localeCompare(b.voiceName)
+    return a.voiceName.localeCompare(b.voiceName)
   }
 
 
@@ -466,9 +398,6 @@
                 if (granted) bgPageInvoke("authWavenet");
               })
             break;
-          case "#connect-phone":
-            location.href = "connect-phone.html"
-            break
         }
       })
     }

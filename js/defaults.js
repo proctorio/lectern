@@ -152,31 +152,7 @@ function observeSetting(name) {
 /**
  * VOICES
  */
-const voices$ = rxjs.combineLatest({
-  awsCreds: observeSetting("awsCreds"),
-  gcpCreds: observeSetting("gcpCreds"),
-  ibmCreds: observeSetting("ibmCreds"),
-  openaiCreds: observeSetting("openaiCreds"),
-  azureCreds: observeSetting("azureCreds"),
-  piperVoices: observeSetting("piperVoices"),
-  supertonicVoices: observeSetting("supertonicVoices"),
-  nghiTtsVoices: observeSetting("nghiTtsVoices"),
-}).pipe(
-  rxjs.exhaustMap(settings => Promise.all([
-    browserTtsEngine.getVoices(),
-    googleTranslateTtsEngine.getVoices(),
-    phoneTtsEngine.getVoices(),
-    settings.supertonicVoices || [],
-    settings.piperVoices || [],
-    settings.nghiTtsVoices || [],
-    settings.openaiCreds ? openaiTtsEngine.getVoices() : [],
-    settings.awsCreds ? amazonPollyTtsEngine.getVoices() : [],
-    settings.gcpCreds ? googleWavenetTtsEngine.getVoices() : googleWavenetTtsEngine.getFreeVoices(),
-    settings.ibmCreds ? ibmWatsonTtsEngine.getVoices() : [],
-    settings.azureCreds ? azureTtsEngine.getVoices() : [],
-    premiumTtsEngine.getVoices(),
-  ])),
-  rxjs.map(arr => arr.flat()),
+const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(
   rxjs.shareReplay(1)
 )
 
@@ -224,85 +200,6 @@ function isMacOSNative(voice) {
   return /^MacOS /.test(voice.voiceName);
 }
 
-function isGoogleTranslate(voice) {
-  return /^GoogleTranslate /.test(voice.voiceName);
-}
-
-function isAmazonCloud(voice) {
-  return /^Amazon /.test(voice.voiceName);
-}
-
-function isMicrosoftCloud(voice) {
-  return /^Microsoft /.test(voice.voiceName) && voice.voiceName.indexOf(' - ') == -1;
-}
-
-function isReadAloudCloud(voice) {
-  return /^ReadAloud /.test(voice.voiceName)
-}
-
-function isAmazonPolly(voice) {
-  return /^AmazonPolly /.test(voice.voiceName);
-}
-
-function isGoogleWavenet(voice) {
-  return /^Google(Standard|Wavenet|Neural2|Studio|Chirp-HD|Chirp3-HD|News|Casual|Polyglot) /.test(voice.voiceName);
-}
-
-function isGoogleStudio(voice) {
-  return /^Google(Studio) /.test(voice.voiceName);
-}
-
-function isIbmWatson(voice) {
-  return /^IBM-Watson /.test(voice.voiceName);
-}
-
-function isOpenai(voice) {
-  return /^OpenAI /.test(voice.voiceName);
-}
-
-function isAzure(voice) {
-  return /^Azure /.test(voice.voiceName);
-}
-
-function isPiperVoice(voice) {
-  return /^Piper /.test(voice.voiceName)
-}
-
-function isSupertonicVoice(voice) {
-  return /^Supertonic /.test(voice.voiceName)
-}
-
-function isNghiTtsVoice(voice) {
-  return /^NghiTTS /.test(voice.voiceName)
-}
-
-function isRHVoice(voice) {
-  return /^RHVoice /.test(voice.voiceName)
-}
-
-function isUseMyPhone(voice) {
-  return voice.isUseMyPhone == true
-}
-
-function isNativeVoice(voice) {
-  return !(
-    isGoogleTranslate(voice)
-    || isAmazonCloud(voice)
-    || isMicrosoftCloud(voice)
-    || isRHVoice(voice)
-    || isReadAloudCloud(voice)
-    || isAmazonPolly(voice)
-    || isGoogleWavenet(voice)
-    || isIbmWatson(voice)
-    || isOpenai(voice)
-    || isAzure(voice)
-  )
-}
-
-function isPremiumVoice(voice) {
-  return isAmazonCloud(voice) || isMicrosoftCloud(voice) || isRHVoice(voice)
-}
-
 async function getSpeechVoice(voiceName, lang) {
   let voices = await rxjs.firstValueFrom(voices$)
   var voice;
@@ -314,20 +211,11 @@ async function getSpeechVoice(voiceName, lang) {
     voiceName = preferredVoiceByLang[parseLang(lang).lang]
     if (voiceName) voice = findVoiceByName(voices, voiceName);
   }
-  //otherwise, auto-select in order: offline, native, free, any
+  //otherwise, auto-select in order: offline, native, any
   if (!voice && lang) {
-    voices = voices.filter(voice => !isUseMyPhone(voice))
     voice = findVoiceByLang(voices.filter(isOfflineVoice), lang)
       || findVoiceByLang(voices.filter(isGoogleNative), lang)
-      || findVoiceByLang(voices.filter(isNativeVoice), lang)
-
-    if (!voice) {
-      if (!await googleTranslateTtsEngine.ready()) voices = voices.filter(voice => !isGoogleTranslate(voice))
-      voice = findVoiceByLang(voices.filter(isGoogleTranslate), lang)
-        || findVoiceByLang(voices.filter(isPremiumVoice), lang)
-        || findVoiceByLang(voices, lang);
-    }
-    if (voice && isPremiumVoice(voice)) voice = Object.assign({autoSelect: true}, voice);
+      || findVoiceByLang(voices, lang);
   }
   return voice;
 }
