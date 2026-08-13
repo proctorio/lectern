@@ -118,34 +118,6 @@ brapi.commands.onCommand.addListener(function(command) {
 
 
 /**
- * Listener for external calls
- */
-brapi.runtime.onMessageExternal.addListener(
-  (request, sender) => {
-    if (request.method == "play" && typeof request.text == "string") {
-      playText(request.text)
-        .catch(handleHeadlessError)
-    }
-    else if (request.method == "pause") {
-      pause()
-        .catch(handleHeadlessError)
-    }
-    else if (request.method == "stop") {
-      stop()
-        .catch(handleHeadlessError)
-    }
-    else if (request.method == "resume") {
-      resume()
-        .catch(handleHeadlessError)
-    }
-    else {
-      handleHeadlessError(new Error("Bad method call"))
-    }
-  })
-
-
-
-/**
  * METHODS
  */
 var currentTask = {
