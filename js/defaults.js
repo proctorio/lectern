@@ -367,40 +367,6 @@ function formatError(err) {
   return message;
 }
 
-function urlEncode(oData) {
-  if (oData == null) return null;
-  var parts = [];
-  for (var key in oData) parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(oData[key]));
-  return parts.join("&");
-}
-
-function ajaxGet(sUrl) {
-  var opts = typeof sUrl == "string" ? {url: sUrl} : sUrl;
-  return fetch(opts.url, {headers: opts.headers})
-    .then(res => {
-      if (!res.ok) throw new Error("Server returns " + res.status)
-      switch (opts.responseType) {
-        case "json": return res.json()
-        case "blob": return res.blob()
-        default: return res.text()
-      }
-    })
-}
-
-function ajaxPost(sUrl, oData, sType) {
-  return fetch(sUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": sType == "json" ? "application/json" : "application/x-www-form-urlencoded"
-      },
-      body: sType == "json" ? JSON.stringify(oData) : urlEncode(oData)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Server returns " + res.status)
-      return res.text()
-    })
-}
-
 
 /**
  * POLYFILLS
