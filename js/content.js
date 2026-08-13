@@ -159,15 +159,6 @@ function tryGetTexts(getTexts, millis) {
     })
 }
 
-function loadPageScript(url) {
-  if (!$("head").length) $("<head>").prependTo("html");
-  $.ajax({
-    dataType: "script",
-    cache: true,
-    url: url
-  });
-}
-
 function simulateMouseEvent(element, eventName, coordX, coordY) {
   element.dispatchEvent(new MouseEvent(eventName, {
     view: window,
