@@ -46,8 +46,7 @@
       $("#voices")
         .change(function() {
           var voiceName = $(this).val();
-          if (voiceName == "@custom") brapi.tabs.create({url: "custom-voices.html"});
-          else if (voiceName == "@languages") brapi.tabs.create({url: "languages.html"});
+          if (voiceName == "@languages") brapi.tabs.create({url: "languages.html"});
           else updateSettings({voiceName})
         });
       $("#languages-edit-button")
@@ -309,10 +308,6 @@
     $("<option>")
       .val("@languages")
       .text(brapi.i18n.getMessage("options_add_more_languages"))
-      .appendTo(additional)
-    $("<option>")
-      .val("@custom")
-      .text(brapi.i18n.getMessage("options_enable_custom_voices"))
       .appendTo(additional)
   }
 

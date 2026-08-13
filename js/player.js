@@ -2,7 +2,6 @@
 var queryString = new URLSearchParams(location.search)
 var activeDoc;
 var playbackError = null;
-var lastUrlPromise = Promise.resolve(null)
 
 
 const idleSubject = new rxjs.BehaviorSubject(true)
@@ -32,7 +31,6 @@ var messageHandlers = {
   seek: seek,
   close: closePlayer,
   shouldPlaySilence: shouldPlaySilence.bind({}),
-  getLastUrl: () => lastUrlPromise,
 }
 
 registerMessageListener("player", messageHandlers)
@@ -138,7 +136,6 @@ function openDoc(source, onEnd) {
     if (typeof onEnd == "function") onEnd(err);
   })
   idleSubject.next(false)
-  lastUrlPromise = Promise.resolve(source.getUri())
 }
 
 function closeDoc() {
