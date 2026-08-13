@@ -104,7 +104,7 @@ const settingsChange$ = rxjs.fromEventPattern(
 
 function getSettings(names) {
   return new Promise(function(fulfill) {
-    brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "useEmbeddedPlayer", "fixBtSilenceGap", "darkMode"], fulfill);
+    brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
@@ -116,7 +116,7 @@ function updateSettings(items) {
 
 function clearSettings(names) {
   return new Promise(function(fulfill) {
-    brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "useEmbeddedPlayer", "fixBtSilenceGap", "darkMode"], fulfill);
+    brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
@@ -635,12 +635,6 @@ function playAudioHere(urlPromise, options, playbackState$) {
     ),
     rxjs.takeWhile(event => event.type != "end", true)
   )
-}
-
-function canUseEmbeddedPlayer() {
-  return brapi.tts && brapi.offscreen ? true : false
-  //without chrome.tts, using WebSpeech inside tab requires initial page interaction
-  //without offscreen, playing audio inside tab requires initial page interaction
 }
 
 function makeSilenceTrack() {

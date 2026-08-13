@@ -266,27 +266,16 @@ async function injectContentScript(tab, frameId, extraScripts) {
 }
 
 async function injectPlayer(tab) {
-  const settings = await getSettings(["useEmbeddedPlayer"])
+  if (!tab) throw new Error("No tab to host the player")
+  if (tab.incognito) {
+    //https://developer.chrome.com/docs/extensions/mv3/manifest/incognito/
+    throw new Error("Incognito tab")
+  }
   const promise = new Promise(f => handlers.playerCheckIn = f)
-  if (tab && settings.useEmbeddedPlayer) {
-    try {
-      if (tab.incognito) {
-        //https://developer.chrome.com/docs/extensions/mv3/manifest/incognito/
-        throw new Error("Incognito tab")
-      }
-      await brapi.scripting.executeScript({
-        target: {tabId: tab.id},
-        func: createPlayerFrame
-      })
-    }
-    catch (err) {
-      console.warn("Cannot embed player", err)
-      await createPlayerTab()
-    }
-  }
-  else {
-    await createPlayerTab()
-  }
+  await brapi.scripting.executeScript({
+    target: {tabId: tab.id},
+    func: createPlayerFrame
+  })
   await promise
 }
 
@@ -299,17 +288,6 @@ function createPlayerFrame() {
   frame.style.borderWidth = "0"
   document.body.appendChild(frame)
 }
-
-async function createPlayerTab() {
-  const tab = await brapi.tabs.create({
-    url: "player.html?autoclose",
-    index: 0,
-    active: false,
-  })
-  await brapi.tabs.update(tab.id, {pinned: true})
-}
-
-
 
 async function sendToPlayer(message) {
   message.dest = "player"

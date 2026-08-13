@@ -52,21 +52,6 @@ document.addEventListener("DOMContentLoaded", initialize)
 async function initialize() {
   setI18nText()
 
-  $("#hidethistab-link")
-    .toggle(canUseEmbeddedPlayer() && !(await getSettings()).useEmbeddedPlayer)
-    .click(function() {
-      $("#dialog-backdrop, #hidethistab-dialog").show()
-    })
-
-  $("#hidethistab-dialog .btn, #hidethistab-dialog .close")
-    .click(function(event) {
-      $("#dialog-backdrop, #hidethistab-dialog").hide()
-      if ($(event.target).is(".btn-ok")) {
-        updateSettings({useEmbeddedPlayer: true})
-          .then(() => window.close())
-          .catch(console.error)
-      }
-    })
 }
 
 function playText(text, opts) {

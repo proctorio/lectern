@@ -161,25 +161,6 @@
 
 
 
-  //audioPlayback
-  Promise.all([brapi.storage.local.get(["useEmbeddedPlayer"]), domReadyPromise])
-    .then(([settings]) => {
-      $("#audio-playback")
-        .change(function() {
-          updateSettings({useEmbeddedPlayer: JSON.parse($(this).val())})
-          brapi.runtime.sendMessage({dest: "player", method: "close"})
-            .catch(err => "OK")
-        })
-      $(".audio-playback-visible").toggle(settings.useEmbeddedPlayer ? true : false)
-    })
-
-  rxjs.combineLatest([observeSetting("useEmbeddedPlayer"), domReadyPromise])
-    .subscribe(([useEmbeddedPlayer]) => {
-      $("#audio-playback").val(useEmbeddedPlayer ? "true" : "false")
-    })
-
-
-
   //voiceTest
   const demoSpeech = {
     get(lang) {
