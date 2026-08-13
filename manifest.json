@@ -22,27 +22,16 @@
     "offscreen",
     "scripting",
     "storage",
-    "tts",
-    "ttsEngine"
+    "tts"
   ],
   "optional_permissions": [
-    "webRequest",
     "webNavigation"
-  ],
-  "host_permissions": [
-    "https://translate.google.com/"
   ],
   "optional_host_permissions": [
     "http://*/",
     "https://*/",
     "file://*/*"
   ],
-  "cross_origin_opener_policy": {
-    "value": "same-origin"
-  },
-  "cross_origin_embedder_policy": {
-    "value": "require-corp"
-  },
   "web_accessible_resources": [
     {
       "resources": [ "player.html", "sound/*", "img/*", "css/*" ],
