@@ -60,9 +60,6 @@ async function init() {
   $("#toggle-dark-mode").click(toggleDarkMode);
 
   refreshSize();
-
-  const {state} = await bgPageInvoke("getPlaybackState")
-  if (state == "PAUSED" || state == "STOPPED") onPlay()
 }
 
 
