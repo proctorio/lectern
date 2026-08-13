@@ -17,32 +17,14 @@
   "options_voicegroup_offline": {
     "message": "Offline Voices"
   },
-  "options_voicegroup_experimental": {
-    "message": "Experimental AI Voices"
-  },
   "options_voicegroup_standard": {
     "message": "Standard Voices"
-  },
-  "options_voicegroup_premium": {
-    "message": "Premium Voices"
   },
   "options_voicegroup_additional": {
     "message": "Additional Voices"
   },
   "options_add_more_languages": {
     "message": "➕ Add more languages..."
-  },
-  "options_enable_custom_voices": {
-    "message": "🧩 Enable custom voices..."
-  },
-  "options_enable_piper_voices": {
-    "message": "⚡ Install Piper voices..."
-  },
-  "options_enable_supertonic_voices": {
-    "message": "⚡ Install Supertonic voices..."
-  },
-  "options_enable_nghitts_voices": {
-    "message": "⚡ Install NghiTTS voices..."
   },
   "options_rate_label": {
     "message": "Speed"
@@ -68,15 +50,6 @@
   "options_highlighting_window": {
     "message": "Show in a separate window"
   },
-  "options_audio_playback": {
-    "message": "Audio Playback"
-  },
-  "options_audio_playback_standalone": {
-    "message": "Use separate tab"
-  },
-  "options_audio_playback_embedded": {
-    "message": "In page"
-  },
   "options_hotkeys_link": {
     "message": "Edit shortcut keys"
   },
@@ -89,32 +62,8 @@
   "options_reset_button": {
     "message": "Reset"
   },
-  "options_logged_in_as": {
-    "message": "Logged in as"
-  },
-  "options_account_button": {
-    "message": "Account"
-  },
-  "options_logout_button": {
-    "message": "Logout"
-  },
   "player_tab_explanation": {
     "message": "Read Aloud uses this tab for audio playback. This tab will automatically close after 5 minutes of no activity."
-  },
-  "player_hidethistab_link": {
-    "message": "Hide this tab"
-  },
-  "player_hidethistab_dialog_title": {
-    "message": "Hide this tab?"
-  },
-  "player_hidethistab_dialog_body": {
-    "message": "If you hide this tab, Read Aloud will play audio inside the current webpage. This means navigating away from the page will cause the speech to stop.\n\n(This setting can be reverted from the extension Options page)"
-  },
-  "player_hidethistab_dialog_ok_button": {
-    "message": "Hide"
-  },
-  "player_hidethistab_dialog_cancel_button": {
-    "message": "Cancel"
   },
   "player_permission_dialog_title": {
     "message": "Permission Requested"
@@ -149,40 +98,10 @@
   "error_add_permissions": {
     "message": "You need to grant Read Aloud additional [permissions](request-permissions) for this website"
   },
-  "error_login_required": {
-    "message": "Please [sign in](sign-in) to use the Premium Voices"
-  },
-  "error_voice_unavailable": {
-    "message": "Voice unavailable, please pick another"
-  },
-  "error_payment_required": {
-    "message": "Out of credits"
-  },
-  "error_wavenet_auth_required": {
-    "message": "You need to grant additional [permissions](auth-wavenet) to enable Google Wavenet voices"
-  },
-  "error_phone_not_connected": {
-    "message": "Phone not connected. [Connect](connect-phone)"
-  },
-  "error_phone_disconnected": {
-    "message": "Phone disconnected ({reason}). [Reconnect](connect-phone)"
-  },
   "error_chatgpt": {
     "message": "Click the speaker icon next to each answer to read it aloud"
   },
   "languages_heading": {
     "message": "Language Options"
-  },
-  "languages_back_button": {
-    "message": "Back to Options"
-  },
-  "google_translate_request_permission": {
-    "message": "Read Aloud would like to use Google Translate for text-to-speech."
-  },
-  "google_translate_allow_button": {
-    "message": "Allow"
-  },
-  "google_translate_keep_page_open": {
-    "message": "Read Aloud is using Google Translate for text-to-speech.  Please keep this tab open."
   }
 }
