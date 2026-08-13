@@ -167,7 +167,7 @@ function AddonReadAloudDoc() {
       })
     var $text = $("<div>")
       .appendTo($popup)
-      .html("Please use this menu to find and install the Read Aloud Google Workspace add-on.  For instructions, see <a style='color:yellow' target='_blank' href='https://blog.readaloud.app/2021/09/google-docs-update.html'>this post</a>.")
+      .text("Document reading from this menu is not available in this document mode.")
       .css({
         backgroundColor: "#333",
         color: "#fff",

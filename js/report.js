@@ -22,7 +22,7 @@ function submit() {
     },
     function() {
       $("#img-spinner").hide();
-      $("#lbl-error").text("Server could not be contacted, please email me directly at hai.phan@gmail.com. Thank you!").show();
+      $("#lbl-error").text("Server could not be contacted. Please try again later.").show();
     })
 }
 
