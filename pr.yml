@@ -1,0 +1,19 @@
+trigger:
+  branches:
+    exclude:
+    - '*'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Plumbing/core-templates
+    - repository: plumbing
+      type: git
+      name: plumbing
+
+stages:
+- template: PR/js/default.yml@templates  # Template reference
+  parameters:
+    testing: true
+    command: "build"

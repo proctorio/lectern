@@ -1,0 +1,18 @@
+trigger:
+  branches:
+    include:
+    - main
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Plumbing/core-templates
+    - repository: lectern
+      type: git
+      name: Open/lectern
+
+stages:
+- template: stages/sync/sync.yml@templates  # Template reference
+  parameters:
+    checkout: lectern
