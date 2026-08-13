@@ -9,7 +9,6 @@
 
   <script src="js/rxjs.umd.min.js"></script>
   <script src="js/jquery-3.7.1.min.js"></script>
-  <script src="js/aws-sdk.js"></script>
   <script src="js/defaults.js"></script>
   <script src="js/messaging.js"></script>
   <script src="js/tts-engines.js"></script>
@@ -25,17 +24,6 @@
       <a href="advanced-options.html" id="expand-button" class="material-icons">open_in_new</a>
     </h2>
 
-    <div class="form-group" id="account-info">
-      <div class="alert alert-info">
-        <div>
-          <span data-i18n="options_logged_in_as"></span>
-          <strong id="account-email"></strong>
-          <a id="account-button" href="#" data-i18n="options_account_button"></a>
-          <a id="logout-button" href="#" data-i18n="options_logout_button"></a>
-        </div>
-      </div>
-    </div>
-
     <div class="form-group">
       <span id="hotkeys-link" data-i18n="options_hotkeys_link"></span>
     </div>
@@ -50,9 +38,6 @@
       <div>
         <select id="voices" class="form-control">
         </select>
-        <small id="voice-info" class="form-text text-muted">
-          Note: This voice may become unavailable at any time.
-        </small>
       </div>
 
       <div>
@@ -92,13 +77,6 @@
         <option value="2" data-i18n="options_highlighting_window"></option>
       </select>
 
-      <div class="audio-playback-visible">
-        <span data-i18n="options_audio_playback"></span>
-      </div>
-      <select id="audio-playback" class="form-control audio-playback-visible">
-        <option value="false" data-i18n="options_audio_playback_standalone"></option>
-        <option value="true" data-i18n="options_audio_playback_embedded"></option>
-      </select>
     </div>
 
     <div class="form-group buttons">

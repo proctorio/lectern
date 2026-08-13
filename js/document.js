@@ -34,21 +34,6 @@ function TabSource() {
         sendToSource = sendToContentScript.bind(null, tabId)
         return sendToSource({method: "getDocumentInfo"})
       }
-      else if (uri.startsWith("epubreader:")) {
-        const extensionId = uri.substr(11)
-        sendToSource = sendToEpubReader.bind({}, extensionId)
-        return sendToSource({method: "getDocumentInfo"})
-          .then(res => {
-            if (!res.success) throw new Error("Failed to get EPUB document info")
-            if (res.lang && !/^[a-z][a-z](-[A-Z][A-Z])?$/.test(res.lang)) res.lang = null
-            if (res.lang) res.detectedLang = res.lang   //prevent lang detection
-            return res
-          })
-      }
-      else if (uri.startsWith("pdfviewer:")) {
-        sendToSource = sendToPdfViewer
-        return sendToSource({method: "getDocumentInfo"})
-      }
       else throw new Error("Invalid source")
     })
     .finally(function() {
@@ -88,42 +73,6 @@ function TabSource() {
     else return result
   }
 
-  async function sendToEpubReader(extId, message) {
-    if (this.currentPage == null) this.currentPage = 0
-    switch (message.method) {
-      case "getDocumentInfo": return brapi.runtime.sendMessage(extId, {name: "getDocumentInfo"})
-      case "getCurrentIndex": return this.currentPage
-      case "getTexts": return getTexts.apply(this, message.args)
-      default: throw new Error("Bad method")
-    }
-    async function getTexts(index) {
-      var res = {success: true, paged: true}
-      for (; this.currentPage<index; this.currentPage++) res = await brapi.runtime.sendMessage(extId, {name: "pageForward"})
-      for (; this.currentPage>index; this.currentPage--) res = await brapi.runtime.sendMessage(extId, {name: "pageBackward"})
-      if (!res.success) throw new Error("Failed to flip EPUB page");
-      res = res.paged ? await brapi.runtime.sendMessage(extId, {name: "getPageText"}) : {success: true, text: null}
-      if (!res.success) throw new Error("Failed to get EPUB text");
-      return res.text && parseXhtml(res.text)
-    }
-    function parseXhtml(xml) {
-      const dom = new DOMParser().parseFromString(xml, "text/xml");
-      const nodes = dom.body.querySelectorAll("h1, h2, h3, h4, h5, h6, p");
-      return Array.prototype.slice.call(nodes)
-        .map(node => node.innerText && node.innerText.trim().replace(/\r?\n/g, " "))
-        .filter(text => text)
-    }
-  }
-
-  async function sendToPdfViewer(message) {
-    message.dest = "pdfViewer"
-    const result = await brapi.runtime.sendMessage(message)
-      .catch(err => {
-        if (/^(A listener indicated|Could not establish)/.test(err.message)) throw new Error(err.message + " " + message.method)
-        throw err
-      })
-    if (result && result.error) throw result.error
-    else return result
-  }
 }
 
 
@@ -253,20 +202,10 @@ function Doc(source, onEnd) {
 
   function detectLanguageOf(text) {
     if (text.length < 100) {
-      //too little text, use cloud detection for improved accuracy
-      return serverDetectLanguage(text)
-        .then(function(result) {
-          return result || browserDetectLanguage(text)
-        })
-        .then(function(lang) {
-          //exclude commonly misdetected languages
-          return ["cy", "eo"].includes(lang) ? null : lang
-        })
+      //too little text for reliable detection, fall back to the declared page lang
+      return Promise.resolve(null);
     }
-    return browserDetectLanguage(text)
-      .then(function(result) {
-        return result || serverDetectLanguage(text);
-      })
+    return browserDetectLanguage(text);
   }
 
   function browserDetectLanguage(text) {
@@ -284,30 +223,6 @@ function Doc(source, onEnd) {
         return null;
       }
     })
-  }
-
-  async function serverDetectLanguage(text) {
-    try {
-      const service = await rxjs.firstValueFrom(fasttextObservable)
-      if (!service) throw new Error("FastText service unavailable")
-      const [prediction] = await service.sendRequest("detectLanguage", {text})
-      return prediction?.language
-    }
-    catch (err) {
-      console.error(err)
-
-      return ajaxPost(config.serviceUrl + "/read-aloud/detect-language", {text: text}, "json")
-        .then(JSON.parse)
-        .then(function(res) {
-          var result = Array.isArray(res) ? res[0] : res
-          if (result && result.language && result.language != "und") return result.language
-          else return null
-        })
-        .catch(function(err) {
-          console.error(err)
-          return null
-        })
-    }
   }
 
   async function getSpeech(texts) {

@@ -33,23 +33,12 @@
       else return ["js/content/google-drive-preview.js"];
     }
     else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
-    else if (/^read\.amazon\./.test(location.hostname)) return ["js/content/kindle-book.js"];
     else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
     else if (location.hostname.endsWith("acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
     else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
     else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
     else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
-    else if (location.hostname == "www.webnovel.com" && location.pathname.startsWith("/book/")) return ["js/content/webnovel.js"];
     else if (location.hostname == "archiveofourown.org") return ["js/content/archiveofourown.js"];
-    else if (location.hostname == "chat.openai.com") return ["js/content/chatgpt.js"];
-    else if (location.pathname.match(/readaloud\.html$/)
-      || location.pathname.match(/\.pdf$/)
-      || $("embed[type='application/pdf']").length
-      || $("iframe[src*='.pdf']").length) return ["js/content/pdf-doc.js"];
-    else if (/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)
-        && location.port === "1122"
-        && location.protocol === "http:"
-        && location.pathname === "/bookshelf/index.html") return  ["js/content/yd-app-web.js"];
     else return ["js/content/html-doc.js"];
   }
 
@@ -159,15 +148,6 @@ function tryGetTexts(getTexts, millis) {
     })
 }
 
-function loadPageScript(url) {
-  if (!$("head").length) $("<head>").prependTo("html");
-  $.ajax({
-    dataType: "script",
-    cache: true,
-    url: url
-  });
-}
-
 function simulateMouseEvent(element, eventName, coordX, coordY) {
   element.dispatchEvent(new MouseEvent(eventName, {
     view: window,
@@ -194,55 +174,9 @@ const getMath = (function() {
 })();
 
 async function makeMath() {
-  const getXmlFromMathEl = function(mathEl) {
-    const clone = mathEl.cloneNode(true)
-    $("annotation, annotation-xml", clone).remove()
-    removeAllAttrs(clone, true)
-    return clone.outerHTML
-  }
-
-  //determine the mml markup
-  const math =
-    when(document.querySelector(".MathJax, .MathJax_Preview"), {
-      selector: ".MathJax[data-mathml]",
-      getXML(el) {
-        const mathEl = el.querySelector("math")
-        return mathEl ? getXmlFromMathEl(mathEl) : el.getAttribute("data-mathml")
-      },
-    })
-    .when(() => document.querySelector("math"), {
-      selector: "math",
-      getXML: getXmlFromMathEl,
-    })
-    .else(null)
-
-  if (!math) return null
-  const elems = $(math.selector).get()
-  if (!elems.length) return null
-
-  //create speech surrogates
-  try {
-    const xmls = elems.map(math.getXML)
-    const texts = await ajaxPost(config.serviceUrl + "/read-aloud/mathml", xmls, "json").then(JSON.parse)
-    elems.forEach((el, i) => $("<span>").addClass("readaloud-mathml").text(texts[i] || "math expression").insertBefore(el))
-  }
-  catch (err) {
-    console.error(err)
-    return {
-      show() {},
-      hide() {}
-    }
-  }
-
-  //return functions to toggle between mml and speech
+  //no speech surrogates, math elements are read via their visible text
   return {
-    show() {
-      for (const el of elems) el.style.setProperty("display", "none", "important")
-      $(".readaloud-mathml").show()
-    },
-    hide() {
-      $(elems).css("display", "")
-      $(".readaloud-mathml").hide()
-    }
+    show() {},
+    hide() {}
   }
 }

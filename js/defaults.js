@@ -3,9 +3,6 @@ var brapi = (typeof chrome != 'undefined') ? chrome : (typeof browser != 'undefi
 polyfills();
 
 var config = {
-  serviceUrl: "https://support.readaloud.app",
-  webAppUrl: "https://readaloud.app",
-  pdfViewerUrl: "https://assets.lsdsoftware.com/read-aloud/pdf-viewer-2/web/readaloud.html",
   entityMap: {
     '&': '&amp;',
     '<': '&lt;',
@@ -25,10 +22,6 @@ var config = {
     'chrome:',
     'about:',
   ],
-  wavenetPerms: {
-    permissions: ["webRequest"],
-    origins: ["https://*/"]
-  },
   browserId: getBrowser(),
 }
 
@@ -111,7 +104,7 @@ const settingsChange$ = rxjs.fromEventPattern(
 
 function getSettings(names) {
   return new Promise(function(fulfill) {
-    brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "useEmbeddedPlayer", "fixBtSilenceGap", "darkMode"], fulfill);
+    brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
@@ -123,7 +116,7 @@ function updateSettings(items) {
 
 function clearSettings(names) {
   return new Promise(function(fulfill) {
-    brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "useEmbeddedPlayer", "fixBtSilenceGap", "darkMode"], fulfill);
+    brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
@@ -152,31 +145,7 @@ function observeSetting(name) {
 /**
  * VOICES
  */
-const voices$ = rxjs.combineLatest({
-  awsCreds: observeSetting("awsCreds"),
-  gcpCreds: observeSetting("gcpCreds"),
-  ibmCreds: observeSetting("ibmCreds"),
-  openaiCreds: observeSetting("openaiCreds"),
-  azureCreds: observeSetting("azureCreds"),
-  piperVoices: observeSetting("piperVoices"),
-  supertonicVoices: observeSetting("supertonicVoices"),
-  nghiTtsVoices: observeSetting("nghiTtsVoices"),
-}).pipe(
-  rxjs.exhaustMap(settings => Promise.all([
-    browserTtsEngine.getVoices(),
-    googleTranslateTtsEngine.getVoices(),
-    phoneTtsEngine.getVoices(),
-    settings.supertonicVoices || [],
-    settings.piperVoices || [],
-    settings.nghiTtsVoices || [],
-    settings.openaiCreds ? openaiTtsEngine.getVoices() : [],
-    settings.awsCreds ? amazonPollyTtsEngine.getVoices() : [],
-    settings.gcpCreds ? googleWavenetTtsEngine.getVoices() : googleWavenetTtsEngine.getFreeVoices(),
-    settings.ibmCreds ? ibmWatsonTtsEngine.getVoices() : [],
-    settings.azureCreds ? azureTtsEngine.getVoices() : [],
-    premiumTtsEngine.getVoices(),
-  ])),
-  rxjs.map(arr => arr.flat()),
+const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(
   rxjs.shareReplay(1)
 )
 
@@ -224,85 +193,6 @@ function isMacOSNative(voice) {
   return /^MacOS /.test(voice.voiceName);
 }
 
-function isGoogleTranslate(voice) {
-  return /^GoogleTranslate /.test(voice.voiceName);
-}
-
-function isAmazonCloud(voice) {
-  return /^Amazon /.test(voice.voiceName);
-}
-
-function isMicrosoftCloud(voice) {
-  return /^Microsoft /.test(voice.voiceName) && voice.voiceName.indexOf(' - ') == -1;
-}
-
-function isReadAloudCloud(voice) {
-  return /^ReadAloud /.test(voice.voiceName)
-}
-
-function isAmazonPolly(voice) {
-  return /^AmazonPolly /.test(voice.voiceName);
-}
-
-function isGoogleWavenet(voice) {
-  return /^Google(Standard|Wavenet|Neural2|Studio|Chirp-HD|Chirp3-HD|News|Casual|Polyglot) /.test(voice.voiceName);
-}
-
-function isGoogleStudio(voice) {
-  return /^Google(Studio) /.test(voice.voiceName);
-}
-
-function isIbmWatson(voice) {
-  return /^IBM-Watson /.test(voice.voiceName);
-}
-
-function isOpenai(voice) {
-  return /^OpenAI /.test(voice.voiceName);
-}
-
-function isAzure(voice) {
-  return /^Azure /.test(voice.voiceName);
-}
-
-function isPiperVoice(voice) {
-  return /^Piper /.test(voice.voiceName)
-}
-
-function isSupertonicVoice(voice) {
-  return /^Supertonic /.test(voice.voiceName)
-}
-
-function isNghiTtsVoice(voice) {
-  return /^NghiTTS /.test(voice.voiceName)
-}
-
-function isRHVoice(voice) {
-  return /^RHVoice /.test(voice.voiceName)
-}
-
-function isUseMyPhone(voice) {
-  return voice.isUseMyPhone == true
-}
-
-function isNativeVoice(voice) {
-  return !(
-    isGoogleTranslate(voice)
-    || isAmazonCloud(voice)
-    || isMicrosoftCloud(voice)
-    || isRHVoice(voice)
-    || isReadAloudCloud(voice)
-    || isAmazonPolly(voice)
-    || isGoogleWavenet(voice)
-    || isIbmWatson(voice)
-    || isOpenai(voice)
-    || isAzure(voice)
-  )
-}
-
-function isPremiumVoice(voice) {
-  return isAmazonCloud(voice) || isMicrosoftCloud(voice) || isRHVoice(voice)
-}
-
 async function getSpeechVoice(voiceName, lang) {
   let voices = await rxjs.firstValueFrom(voices$)
   var voice;
@@ -314,20 +204,11 @@ async function getSpeechVoice(voiceName, lang) {
     voiceName = preferredVoiceByLang[parseLang(lang).lang]
     if (voiceName) voice = findVoiceByName(voices, voiceName);
   }
-  //otherwise, auto-select in order: offline, native, free, any
+  //otherwise, auto-select in order: offline, native, any
   if (!voice && lang) {
-    voices = voices.filter(voice => !isUseMyPhone(voice))
     voice = findVoiceByLang(voices.filter(isOfflineVoice), lang)
       || findVoiceByLang(voices.filter(isGoogleNative), lang)
-      || findVoiceByLang(voices.filter(isNativeVoice), lang)
-
-    if (!voice) {
-      if (!await googleTranslateTtsEngine.ready()) voices = voices.filter(voice => !isGoogleTranslate(voice))
-      voice = findVoiceByLang(voices.filter(isGoogleTranslate), lang)
-        || findVoiceByLang(voices.filter(isPremiumVoice), lang)
-        || findVoiceByLang(voices, lang);
-    }
-    if (voice && isPremiumVoice(voice)) voice = Object.assign({autoSelect: true}, voice);
+      || findVoiceByLang(voices, lang);
   }
   return voice;
 }
@@ -486,40 +367,6 @@ function formatError(err) {
   return message;
 }
 
-function urlEncode(oData) {
-  if (oData == null) return null;
-  var parts = [];
-  for (var key in oData) parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(oData[key]));
-  return parts.join("&");
-}
-
-function ajaxGet(sUrl) {
-  var opts = typeof sUrl == "string" ? {url: sUrl} : sUrl;
-  return fetch(opts.url, {headers: opts.headers})
-    .then(res => {
-      if (!res.ok) throw new Error("Server returns " + res.status)
-      switch (opts.responseType) {
-        case "json": return res.json()
-        case "blob": return res.blob()
-        default: return res.text()
-      }
-    })
-}
-
-function ajaxPost(sUrl, oData, sType) {
-  return fetch(sUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": sType == "json" ? "application/json" : "application/x-www-form-urlencoded"
-      },
-      body: sType == "json" ? JSON.stringify(oData) : urlEncode(oData)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Server returns " + res.status)
-      return res.text()
-    })
-}
-
 
 /**
  * POLYFILLS
@@ -577,22 +424,6 @@ function escapeHtml(text) {
   })
 }
 
-function getUniqueClientId() {
-  return getSettings(["uniqueClientId"])
-    .then(function(settings) {
-      return settings.uniqueClientId || createId(8).then(extraAction(saveId));
-    })
-  function createId(len) {
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    for (var i=0; i<len; i++) text += possible.charAt(Math.floor(Math.random() * possible.length));
-    return Promise.resolve(text);
-  }
-  function saveId(id) {
-    return updateSettings({uniqueClientId: id});
-  }
-}
-
 function getBrowser() {
   if (/Opera|OPR\//.test(navigator.userAgent)) return 'opera';
   if (/firefox/i.test(navigator.userAgent)) return 'firefox';
@@ -638,81 +469,6 @@ function StateMachine(states) {
   }
   this.getState = function() {
     return currentStateName;
-  }
-}
-
-function getAuthToken(opts) {
-  if (!opts) opts = {};
-  return getSettings(["authToken"])
-    .then(function(settings) {
-      return settings.authToken || (opts.interactive ? interactiveLogin().then(extraAction(saveToken)) : null);
-    })
-  //Note: Cognito webAuthFlow is always interactive (if user already logged in, it shows button "Sign in as <email>" or  "Continue with Google/Facebook/etc")
-  function interactiveLogin() {
-    return new Promise(function(fulfill, reject) {
-      if (!brapi.identity || !brapi.identity.launchWebAuthFlow) return fulfill(null);
-      brapi.identity.launchWebAuthFlow({
-        interactive: true,
-        url: config.webAppUrl + "/login.html?returnUrl=" + brapi.identity.getRedirectURL()
-      },
-      function(responseUrl) {
-        if (responseUrl) {
-          var index = responseUrl.indexOf("?");
-          var res = parseQueryString(responseUrl.substr(index));
-          if (res.error) reject(new Error(res.error_description || res.error));
-          else fulfill(res.token);
-        }
-        else {
-          if (brapi.runtime.lastError) reject(new Error(brapi.runtime.lastError.message));
-          else fulfill(null);
-        }
-      })
-    })
-  }
-  function saveToken(token) {
-    if (token) return updateSettings({authToken: token});
-  }
-}
-
-function clearAuthToken() {
-  return clearSettings(["authToken"])
-    .then(function() {
-      return new Promise(function(fulfill) {
-        brapi.identity.launchWebAuthFlow({
-          interactive: false,
-          url: config.webAppUrl + "/logout.html?returnUrl=" + brapi.identity.getRedirectURL()
-        },
-        function(responseUrl) {
-          if (responseUrl) {
-            var index = responseUrl.indexOf("?");
-            var res = index != -1 ? parseQueryString(responseUrl.substr(index)) : {};
-            if (res.error) reject(new Error(res.error_description || res.error));
-            else fulfill();
-          }
-          else {
-            if (brapi.runtime.lastError) console.warn(new Error(brapi.runtime.lastError.message));
-            fulfill();
-          }
-        })
-      })
-    })
-}
-
-async function getAccountInfo(authToken) {
-  const res = await fetch(config.serviceUrl + "/read-aloud/get-account?t=" + authToken)
-  if (res.ok) {
-    const account = await res.json()
-    account.balance += account.freeBalance;
-    return account;
-  }
-  else {
-    if (res.status == 401) {
-      await clearSettings(["authToken"])
-      return null
-    }
-    else {
-      throw new Error("Can't fetch account info, server returns " + res.status)
-    }
   }
 }
 
@@ -847,12 +603,6 @@ function playAudioHere(urlPromise, options, playbackState$) {
   )
 }
 
-function canUseEmbeddedPlayer() {
-  return brapi.tts && brapi.offscreen ? true : false
-  //without chrome.tts, using WebSpeech inside tab requires initial page interaction
-  //without offscreen, playing audio inside tab requires initial page interaction
-}
-
 function makeSilenceTrack() {
   const audio = new Audio(brapi.runtime.getURL("sound/silence.mp3"))
   audio.loop = true
@@ -893,27 +643,6 @@ function makeSilenceTrack() {
       stateMachine.trigger("stop")
     }
   }
-}
-
-async function getRemoteConfig() {
-  let {remoteConfig} = await getSettings("remoteConfig")
-  if (remoteConfig && remoteConfig.expire > Date.now()) {
-    //still valid, return stored object
-    return remoteConfig
-  }
-  try {
-    //attempt to get latest from server
-    remoteConfig = await ajaxGet({url: config.serviceUrl + "/read-aloud/config", responseType: "json"})
-  }
-  catch (err) {
-    console.error(err)
-    //if fail, use the expired object or create a dummy
-    if (!remoteConfig) remoteConfig = {}
-  }
-  //dont check again for an hour
-  remoteConfig.expire = Date.now() + 3600*1000
-  await updateSettings({remoteConfig})
-  return remoteConfig
 }
 
 /**
