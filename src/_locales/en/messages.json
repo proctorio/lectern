@@ -1,12 +1,12 @@
 {
   "extension_name": {
-    "message": "Read Aloud: A Text to Speech Voice Reader"
+    "message": "Lectern: Text to Speech Reader"
   },
   "extension_short_name": {
-    "message": "Read Aloud"
+    "message": "Lectern"
   },
   "extension_description": {
-    "message": "Read aloud the current web-page article with one click, using text to speech (TTS). Supports 40+ languages."
+    "message": "Reads web pages aloud using your device's built-in voices. No account, no cloud, no data leaves your browser."
   },
   "options_heading": {
     "message": "Options"
@@ -24,7 +24,7 @@
     "message": "Additional Voices"
   },
   "options_add_more_languages": {
-    "message": "➕ Add more languages..."
+    "message": "Add more languages..."
   },
   "options_rate_label": {
     "message": "Speed"
@@ -62,11 +62,11 @@
   "options_reset_button": {
     "message": "Reset"
   },
-  "player_tab_explanation": {
-    "message": "Read Aloud uses this tab for audio playback. This tab will automatically close after 5 minutes of no activity."
+  "options_about_heading": {
+    "message": "About"
   },
   "context_read_selection": {
-    "message": "Read aloud selected text"
+    "message": "Read selection aloud"
   },
   "error_no_text": {
     "message": "Didn't find any text to read, try selecting the text you want to read first"
@@ -74,23 +74,14 @@
   "error_no_voice": {
     "message": "Language not supported '{lang}'"
   },
-  "error_upload_pdf": {
-    "message": "Please use the form to upload your PDF file to read aloud"
-  },
-  "error_ajax_pdf": {
-    "message": "Please save this PDF file to your computer and open it inside this [PDF viewer](open-pdf-viewer) to read aloud"
-  },
   "error_page_unreadable": {
-    "message": "Cannot read aloud this website"
+    "message": "Lectern cannot read this website"
   },
   "error_file_access": {
-    "message": "You need to grant Read Aloud access to file URLs in extension [settings](open-extension-settings)"
+    "message": "You need to grant Lectern access to file URLs in extension [settings](open-extension-settings)"
   },
   "error_add_permissions": {
-    "message": "You need to grant Read Aloud additional [permissions](request-permissions) for this website"
-  },
-  "error_chatgpt": {
-    "message": "Click the speaker icon next to each answer to read it aloud"
+    "message": "You need to grant Lectern additional [permissions](request-permissions) for this website"
   },
   "languages_heading": {
     "message": "Language Options"
