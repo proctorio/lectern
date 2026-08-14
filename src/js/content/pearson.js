@@ -4,10 +4,10 @@ var $nextBtn = $("svg.rightArrow").closest("button");
 if ($prevBtn.length == 0) $prevBtn = $("button[aria-label^=prev]");
 if ($nextBtn.length == 0) $nextBtn = $("button[aria-label^=next]");
 
-var rad = readAloudDoc;
+var rad = lecternDoc;
 var currentIndex = 0;
 
-readAloudDoc = {
+lecternDoc = {
 	getCurrentIndex() 
 	{
 		return currentIndex = 0;

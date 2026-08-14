@@ -1,6 +1,6 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { config, defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke } from "./defaults.js";
+import { defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 import { voices$ } from "./tts-engines.js";
 
@@ -9,6 +9,8 @@ import { voices$ } from "./tts-engines.js";
 	const queryString = getQueryString();
 	const domReadyPromise = domReady();
 	const playerCheckIn$ = new rxjs.Subject();
+
+	domReadyPromise.then(() => $("#about-version").text(brapi.runtime.getManifest().version));
 
 	registerMessageListener("options", {
 		playerCheckIn() 
@@ -342,28 +344,6 @@ import { voices$ } from "./tts-engines.js";
 		{
 			var errInfo = JSON.parse(err.message);
 			$("#status").html(formatError(errInfo)).parent().show();
-		}
-		else if (config.browserId == "opera" && (/locked fullscreen/).test(err.message)) 
-		{
-			$("#status").html("Click <a href='#open-player-tab'>here</a> to start read aloud.").parent().show();
-			$("#status a").click(async function() 
-			{
-				try 
-				{
-					playerCheckIn$.pipe(rxjs.take(1)).subscribe(() => $("#test-voice").click());
-					const tab = await brapi.tabs.create({
-						url: "player.html?opener=options&autoclose=long",
-						index: 0,
-						active: false
-					});
-					brapi.tabs.update(tab.id, {pinned: true})
-						.catch(console.error);
-				}
-				catch (err) 
-				{
-					handleError(err);
-				}
-			});
 		}
 		else 
 		{

@@ -4,7 +4,7 @@
   "name": "__MSG_extension_name__",
   "short_name": "__MSG_extension_short_name__",
   "description": "__MSG_extension_description__",
-  "version": "2.23.0",
+  "version": "1.0.0",
   "default_locale": "en",
   "minimum_chrome_version": "99",
 
@@ -13,8 +13,9 @@
   },
   "icons": {
     "16": "img/icon-16.png",
+    "32": "img/icon-32.png",
     "48": "img/icon-48.png",
-    "128": "img/icon.png"
+    "128": "img/icon-128.png"
   },
   "permissions": [
     "activeTab",

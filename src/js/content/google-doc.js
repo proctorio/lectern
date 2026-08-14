@@ -1,9 +1,9 @@
-var readAloudDoc = (function() 
+var lecternDoc = (function() 
 {
-	if ($(".kix-canvas-tile-content > svg").length) return new SvgReadAloudDoc();
-	if ($(".kix-paragraphrenderer").length) return new LegacyReadAloudDoc();
+	if ($(".kix-canvas-tile-content > svg").length) return new SvgLecternDoc();
+	if ($(".kix-paragraphrenderer").length) return new LegacyLecternDoc();
 	
-	return new AddonReadAloudDoc();
+	return new AddonLecternDoc();
 })();
 
 async function altGetTexts() 
@@ -22,7 +22,7 @@ async function altGetTexts()
 	return text.split(/\s*\r?\n\s*/);
 }
 
-function AddonReadAloudDoc() 
+function AddonLecternDoc() 
 {
 	// Docs in this mode cannot be read without the upstream add-on, which this
 	// fork does not ship. Fall back to model-chunk extraction when available.
@@ -36,7 +36,7 @@ function AddonReadAloudDoc()
 	};
 }
 
-function LegacyReadAloudDoc() 
+function LegacyLecternDoc() 
 {
 	var viewport = $(".kix-appview-editor").get(0);
 	var pages = $(".kix-page");
@@ -168,7 +168,7 @@ function LegacyReadAloudDoc()
 	}
 }
 
-function SvgReadAloudDoc() 
+function SvgLecternDoc() 
 {
 	var currentPageMarker, currentPageNumber;
 

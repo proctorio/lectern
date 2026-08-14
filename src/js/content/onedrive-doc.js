@@ -1,4 +1,4 @@
-var readAloudDoc = ["word-edit.officeapps.live.com", "usc-word-edit.officeapps.live.com"].includes(location.hostname) ? new Docx() : new Pdf();
+var lecternDoc = ["word-edit.officeapps.live.com", "usc-word-edit.officeapps.live.com"].includes(location.hostname) ? new Docx() : new Pdf();
 
 function Docx() 
 {

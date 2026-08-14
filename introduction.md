@@ -1,30 +1,39 @@
-# Read Aloud: A Text to Speech Voice Reader
+# Lectern, Text to Speech Reader
 
-Tired of sitting, tired of reading? Click a button, jump on your bed, and have the article read aloud to you.
+Chrome Web Store listing copy. Title and descriptions per
+docs/lectern/03-branding-spec.md; keep the store data disclosures in sync
+with docs/lectern/PRIVACY.md and PERMISSIONS.md.
 
-**Note:** It's not possible to read the extension installation market page, please navigate to another site like [wikipedia](https://en.wikipedia.org/wiki/Speech_synthesis) for testing after installation.
+## Title
 
-## Features:
+Lectern, Text to Speech Reader
 
-- Choose from male or female voices.
-- Choose from a range of free voices or use Amazon Polly or Google Wavenet paid voices.
-- Change the pitch of the voice and the reading speed.
-- Supports PDF.
-- Available on Firefox browser and Chromium / Chrome browser.
-- Supports keyboard shortcuts for quick actions.
+## Short description
 
-It works on a variety of websites, including news sites, blogs, fan fiction, publications, textbooks, school and class websites, online universities and course materials.
+Reads web pages aloud using your device's built-in voices. No account, no
+cloud, no data leaves your browser.
 
-## Voices
+## Long description
 
-Read Aloud allows you to select from a variety of text-to-speech voices, including those provided natively by the browser, as well as by text-to-speech cloud service providers such as Google Wavenet, Amazon Polly, IBM Watson, and Microsoft. Some of the cloud-based voices may require additional in-app purchase to enable.
+Lectern reads selected text or full pages aloud using the voices already
+installed in your operating system and browser. It is keyboard driven, works
+alongside screen readers rather than fighting them, and highlights what it
+reads.
 
-# Usage Guides
+In its default configuration Lectern makes zero network requests. The text
+it reads never leaves your device. There is no account, no sign-in, no
+analytics, and no cloud synthesis.
 
-You can find the usage guides [here](https://github.com/ken107/read-aloud#usage-guides).
+Lectern is built for students with reading disabilities, low vision users,
+institutions with Section 508 and WCAG obligations, and anyone taking a
+proctored assessment who needs assistive technology that will not conflict
+with exam software.
 
-## About
+Unlike cloud-voice readers, Lectern is a minimal, local-only,
+allow-list-friendly reader designed for locked-down assessment environments.
+Every permission it requests maps to a visible feature, it injects nothing
+into a page until you ask it to read, and its behavior can be audited from
+its public source repository.
 
-Read Aloud is aimed at users who prefer to listen to content instead of reading, people with dyslexia or other learning disabilities, children learning to read, learning foreign language or simply to provide users with alternative way to consume web content.
-
-Read Aloud is an open-source project I created in my spare time to satisfy my own need. I'm surprised that it has become quite popular and glad that it's been useful to many people. If you wish to contribute bug fixes or translations, please visit the GitHub page (https://github.com/ken107/read-aloud). If you see bugs or have suggestions to make the extension better, please don't hesitate to provide feedback via the "report issue" link inside the app.
+Built on Read Aloud by Hai Phan, MIT licensed. Lectern is an independent
+project and is not affiliated with or endorsed by the original author.

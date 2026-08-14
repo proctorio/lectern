@@ -14,7 +14,7 @@
     "lint:check": "eslint src/js test tools",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "package": "npm run build && cd dist && zip -r ../build/package.zip . -x \\*.map",
+    "package": "npm run build && cp LICENSE NOTICE dist/ && cd dist && zip -r ../build/package.zip . -x \\*.map",
     "audit:remote": "bash scripts/audit-remote-code.sh dist",
     "audit:manifest": "bash scripts/verify-manifest.sh dist/manifest.json",
     "test:integration": "npm run build && playwright test"

@@ -37,6 +37,15 @@ EXCLUDES=(
   # localhost fixture host permission by design) are not shipped artifacts.
   --exclude-dir=.test_output
   --exclude-dir=test-results
+  # Unit and integration tests plus repo tooling are not shipped artifacts
+  # (the package zip is built from dist/ only).
+  --exclude-dir=test
+  --exclude-dir=e2e
+  --exclude-dir=tools
+  --exclude=.npmrc
+  --exclude=eslint.config.js
+  --exclude=vitest.config.js
+  --exclude=playwright.config.js
   --exclude-dir=.github
   --exclude=NOTICE
   --exclude=FORK.md
@@ -145,13 +154,17 @@ report "runtime script element creation" "$out"
 
 # The allowlisted attribution URL legitimately contains the upstream name, so it
 # is filtered here. A bare mention of the upstream name anywhere else is a leak.
-out=$(grep -rInE "read[ _-]?aloud" "${EXCLUDES[@]}" "$TARGET" 2>/dev/null \
-      | grep -vE "$ALLOWLIST_REGEX")
+# Case-insensitive since phase 4: store review cares about the visible name
+# in any casing. The verbatim MIT attribution sentence in the options About
+# surface is allowlisted by exact text.
+ATTRIBUTION_REGEX='Read Aloud</a> by Hai Phan'
+out=$(grep -rIinE "read[ _-]?aloud" "${EXCLUDES[@]}" "$TARGET" 2>/dev/null \
+      | grep -vE "$ALLOWLIST_REGEX" | grep -vE "$ATTRIBUTION_REGEX")
 report "upstream product name in shipped files (branding leak)" "$out"
 
 # Locale files are the classic leak. Scanned separately so the finding is obvious.
 if [ -d "$TARGET/_locales" ]; then
-  out=$(grep -rInE "read[ _-]?aloud" "$TARGET/_locales" 2>/dev/null)
+  out=$(grep -rIinE "read[ _-]?aloud" "$TARGET/_locales" 2>/dev/null)
   report "upstream product name in _locales (check every language)" "$out"
 fi
 

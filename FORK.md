@@ -60,7 +60,7 @@ Record each removal so nobody reintroduces it by accident.
 | PDF viewer (remote-hosted) | Served from upstream author's CDN, cut per decision D4 | phase2 |
 | Kindle OCR, Chegg, VitalSource, LibbyApp, Play Books, EPUBReader, Adobe, Kami, ChatGPT, webnovel, yd-app handlers | Remote services, paywalled readers, off-thesis surface | phase2 |
 | Server MathML and language detection | Page content egress; both are local-only now | phase2 |
-| Upstream icons and images | Streamline Labs / Freepik assets, not sublicensable | phase4 (pending) |
+| Upstream icons and images | Streamline Labs / Freepik assets, not sublicensable | phase4 (replaced with in-house placeholder set pending commissioned art, decision Q6) |
 
 ## Extension ID history
 

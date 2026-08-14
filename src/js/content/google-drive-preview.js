@@ -1,4 +1,4 @@
-var readAloudDoc = new function() 
+var lecternDoc = new function() 
 {
 	var viewport, pages;
 
