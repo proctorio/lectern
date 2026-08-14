@@ -1,8 +1,9 @@
-var brapi = (typeof chrome != 'undefined') ? chrome : (typeof browser != 'undefined' ? browser : {});
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
 
 polyfills();
 
-var config = {
+export var config = {
   entityMap: {
     '&': '&amp;',
     '<': '&lt;',
@@ -25,7 +26,7 @@ var config = {
   browserId: getBrowser(),
 }
 
-var defaults = {
+export var defaults = {
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0,
@@ -34,19 +35,19 @@ var defaults = {
   highlightWindowSize: 2,
 };
 
-var getSingletonAudio = lazy(() => {
+export var getSingletonAudio = lazy(() => {
   const audio = new Audio()
   audio.crossOrigin = "anonymous"
   return audio
 })
-var getSilenceTrack = lazy(() => makeSilenceTrack())
+export var getSilenceTrack = lazy(() => makeSilenceTrack())
 
 setupDarkMode()
 
 
 
 
-async function setupDarkMode() {
+export async function setupDarkMode() {
   //if extension page but not service worker
   if (typeof brapi.commands != "undefined" && typeof window != "undefined") {
     const [{darkMode}] = await Promise.all([
@@ -68,20 +69,20 @@ async function setupDarkMode() {
 /**
  * HELPERS
  */
-function lazy(get) {
+export function lazy(get) {
   var value
   return () => value || (value = get())
 }
 
-function immediate(get) {
+export function immediate(get) {
   return get()
 }
 
-function getQueryString() {
+export function getQueryString() {
   return location.search ? parseQueryString(location.search) : {};
 }
 
-function parseQueryString(search) {
+export function parseQueryString(search) {
   if (search.charAt(0) != '?') throw new Error("Invalid argument");
   var queryString = {};
   search.substr(1).replace(/\+/g, '%20').split('&').forEach(function(tuple) {
@@ -95,43 +96,43 @@ function parseQueryString(search) {
 /**
  * SETTINGS
  */
-const settingsChange$ = rxjs.fromEventPattern(
+export const settingsChange$ = rxjs.fromEventPattern(
   h => brapi.storage.local.onChanged.addListener(h),
   h => brapi.storage.local.onChanged.removeListener(h)
 ).pipe(
   rxjs.share()
 )
 
-function getSettings(names) {
+export function getSettings(names) {
   return new Promise(function(fulfill) {
     brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
-function updateSettings(items) {
+export function updateSettings(items) {
   return new Promise(function(fulfill) {
     brapi.storage.local.set(items, fulfill);
   });
 }
 
-function clearSettings(names) {
+export function clearSettings(names) {
   return new Promise(function(fulfill) {
     brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
   });
 }
 
-async function getSetting(name) {
+export async function getSetting(name) {
   const items = await brapi.storage.local.get([name])
   return items[name]
 }
 
-async function updateSetting(name, value) {
+export async function updateSetting(name, value) {
   const items = {}
   items[name] = value
   await brapi.storage.local.set(items)
 }
 
-function observeSetting(name) {
+export function observeSetting(name) {
   return rxjs.concat(
     rxjs.defer(() => getSetting(name)),
     settingsChange$.pipe(
@@ -145,11 +146,7 @@ function observeSetting(name) {
 /**
  * VOICES
  */
-const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(
-  rxjs.shareReplay(1)
-)
-
-function groupVoicesByLang(voices) {
+export function groupVoicesByLang(voices) {
   return voices.groupBy(function(voice) {
     const voiceLanguages = getVoiceLanguages(voice)
     if (voiceLanguages) {
@@ -166,59 +163,39 @@ function groupVoicesByLang(voices) {
   })
 }
 
-function getVoiceLanguages(voice) {
+export function getVoiceLanguages(voice) {
   if (voice.langs) return voice.langs
   else if (voice.lang) return [voice.lang]
   else return undefined
 }
 
-function getFirstLanguage(voice) {
+export function getFirstLanguage(voice) {
   if (voice.langs) return voice.langs[0]
   else return voice.lang
 }
 
-function isOfflineVoice(voice) {
+export function isOfflineVoice(voice) {
   return voice.remote == false
 }
 
-function isGoogleNative(voice) {
+export function isGoogleNative(voice) {
   return /^Google\s/.test(voice.voiceName);
 }
 
-function isChromeOSNative(voice) {
+export function isChromeOSNative(voice) {
   return /^Chrome\sOS\s/.test(voice.voiceName);
 }
 
-function isMacOSNative(voice) {
+export function isMacOSNative(voice) {
   return /^MacOS /.test(voice.voiceName);
 }
 
-async function getSpeechVoice(voiceName, lang) {
-  let voices = await rxjs.firstValueFrom(voices$)
-  var voice;
-  //if a specific voice is indicated
-  if (voiceName) voice = findVoiceByName(voices, voiceName);
-  //if no specific voice indicated, but a preferred voice was configured for the language
-  if (!voice && lang) {
-    const preferredVoiceByLang = (await getSetting("preferredVoices")) || {}
-    voiceName = preferredVoiceByLang[parseLang(lang).lang]
-    if (voiceName) voice = findVoiceByName(voices, voiceName);
-  }
-  //otherwise, auto-select in order: offline, native, any
-  if (!voice && lang) {
-    voice = findVoiceByLang(voices.filter(isOfflineVoice), lang)
-      || findVoiceByLang(voices.filter(isGoogleNative), lang)
-      || findVoiceByLang(voices, lang);
-  }
-  return voice;
-}
-
-function findVoiceByName(voices, name) {
+export function findVoiceByName(voices, name) {
   for (var i=0; i<voices.length; i++) if (voices[i].voiceName == name) return voices[i];
   return null;
 }
 
-function findVoiceByLang(voices, lang) {
+export function findVoiceByLang(voices, lang) {
   var speechLang = parseLang(lang);
   var match = {};
   voices.forEach(function(voice) {
@@ -256,7 +233,7 @@ function findVoiceByLang(voices, lang) {
 /**
  * HELPERS
  */
-function getActiveTab() {
+export function getActiveTab() {
   return new Promise(function(fulfill) {
     brapi.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
       fulfill(tabs[0]);
@@ -264,7 +241,7 @@ function getActiveTab() {
   })
 }
 
-function getCurrentTab() {
+export function getCurrentTab() {
   return new Promise(function(fulfill, reject) {
     brapi.tabs.getCurrent(function(tab) {
       if (tab) fulfill(tab)
@@ -273,19 +250,19 @@ function getCurrentTab() {
   })
 }
 
-function getTab(tabId) {
+export function getTab(tabId) {
   return new Promise(function(fulfill) {
     brapi.tabs.get(tabId, fulfill)
   })
 }
 
-function setTabUrl(tabId, url) {
+export function setTabUrl(tabId, url) {
   return new Promise(function(fulfill) {
     brapi.tabs.update(tabId, {url: url}, fulfill);
   })
 }
 
-function createTab(url, waitForLoad) {
+export function createTab(url, waitForLoad) {
   return new Promise(function(fulfill) {
     brapi.tabs.create({url: url}, function(tab) {
       if (!waitForLoad) fulfill(tab);
@@ -301,7 +278,7 @@ function createTab(url, waitForLoad) {
   })
 }
 
-function updateTab(tabId, details) {
+export function updateTab(tabId, details) {
   return new Promise(function(fulfill, reject) {
     brapi.tabs.update(tabId, details, function(tab) {
       if (tab) fulfill(tab)
@@ -310,7 +287,7 @@ function updateTab(tabId, details) {
   })
 }
 
-function createWindow(details) {
+export function createWindow(details) {
   return new Promise(function(fulfill, reject) {
     brapi.windows.create(details, function(window) {
       if (window) fulfill(window)
@@ -319,7 +296,7 @@ function createWindow(details) {
   })
 }
 
-function updateWindow(windowId, details) {
+export function updateWindow(windowId, details) {
   return new Promise(function(fulfill, reject) {
     brapi.windows.update(windowId, details, function(window) {
       if (window) fulfill(window)
@@ -328,24 +305,24 @@ function updateWindow(windowId, details) {
   })
 }
 
-function extraAction(action) {
+export function extraAction(action) {
   return function(data) {
     return Promise.resolve(action(data))
       .then(function() {return data})
   }
 }
 
-function waitMillis(millis) {
+export function waitMillis(millis) {
   return new Promise(function(fulfill) {
     setTimeout(fulfill, millis);
   });
 }
 
-function wait(observable, value) {
+export function wait(observable, value) {
   return rxjs.firstValueFrom(observable.pipe(rxjs.filter(x => x == value)))
 }
 
-function parseLang(lang) {
+export function parseLang(lang) {
   var tokens = lang.toLowerCase().replace(/_/g, '-').split(/-/, 2);
   return {
     lang: tokens[0],
@@ -353,11 +330,11 @@ function parseLang(lang) {
   };
 }
 
-function assert(truthy, message) {
+export function assert(truthy, message) {
   if (!truthy) throw new Error(message || "Assertion failed");
 }
 
-function formatError(err) {
+export function formatError(err) {
   var message = brapi.i18n && brapi.i18n.getMessage(err.code) || err.code;
   if (message) {
     message = message
@@ -371,7 +348,7 @@ function formatError(err) {
 /**
  * POLYFILLS
  */
-function polyfills() {
+export function polyfills() {
   Object.defineProperty(Array.prototype, 'groupBy', {
     value: function(keySelector, valueReducer) {
       if (!valueReducer) {
@@ -403,13 +380,13 @@ function polyfills() {
 /**
  * HELPERS
  */
-function domReady() {
+export function domReady() {
   return new Promise(function(fulfill) {
     $(fulfill);
   })
 }
 
-function setI18nText() {
+export function setI18nText() {
   $("[data-i18n]").each(function() {
     var key = $(this).data("i18n");
     var text = brapi.i18n.getMessage(key);
@@ -418,19 +395,19 @@ function setI18nText() {
   })
 }
 
-function escapeHtml(text) {
+export function escapeHtml(text) {
   return text.replace(/[&<>"'`=\/]/g, function(s) {
     return config.entityMap[s];
   })
 }
 
-function getBrowser() {
+export function getBrowser() {
   if (/Opera|OPR\//.test(navigator.userAgent)) return 'opera';
   if (/firefox/i.test(navigator.userAgent)) return 'firefox';
   return 'chrome';
 }
 
-function getHotkeySettingsUrl() {
+export function getHotkeySettingsUrl() {
   switch (config.browserId) {
     case 'opera': return 'opera://settings/configureCommands';
     case 'chrome': return 'chrome://extensions/configureCommands';
@@ -438,7 +415,7 @@ function getHotkeySettingsUrl() {
   }
 }
 
-function StateMachine(states) {
+export function StateMachine(states) {
   if (!states.IDLE) throw new Error("Missing IDLE state");
   var currentStateName = "IDLE";
   var lock = 0;
@@ -472,19 +449,19 @@ function StateMachine(states) {
   }
 }
 
-function isMobileOS() {
+export function isMobileOS() {
   var check = false;
   (function(a){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||window.opera);
   return check;
 }
 
-function getAllFrames(tabId) {
+export function getAllFrames(tabId) {
   return new Promise(function(fulfill) {
     brapi.webNavigation.getAllFrames({tabId: tabId}, fulfill);
   })
 }
 
-function promiseTimeout(millis, errorMsg, promise) {
+export function promiseTimeout(millis, errorMsg, promise) {
   return new Promise(function(fulfill, reject) {
     var timedOut = false;
     var timer = setTimeout(onTimeout, millis);
@@ -507,7 +484,7 @@ function promiseTimeout(millis, errorMsg, promise) {
   })
 }
 
-function bgPageInvoke(method, args) {
+export function bgPageInvoke(method, args) {
   return new Promise(function(fulfill, reject) {
     brapi.runtime.sendMessage({dest: "serviceWorker", method: method, args: args}, function(res) {
       if (res && res.error) reject(res.error);
@@ -516,7 +493,7 @@ function bgPageInvoke(method, args) {
   })
 }
 
-function detectTabLanguage(tabId) {
+export function detectTabLanguage(tabId) {
   return new Promise(function(fulfill) {
     brapi.tabs.detectLanguage(tabId, fulfill)
   })
@@ -530,7 +507,7 @@ function detectTabLanguage(tabId) {
   })
 }
 
-function truncateRepeatedChars(text, max) {
+export function truncateRepeatedChars(text, max) {
   var result = ""
   var startIndex = 0
   var count = 1
@@ -548,7 +525,7 @@ function truncateRepeatedChars(text, max) {
   return result
 }
 
-function playAudioHere(urlPromise, options, playbackState$) {
+export function playAudioHere(urlPromise, options, playbackState$) {
   const audio = getSingletonAudio()
   const silenceTrack = getSilenceTrack()
   return rxjs.from(urlPromise).pipe(
@@ -603,7 +580,7 @@ function playAudioHere(urlPromise, options, playbackState$) {
   )
 }
 
-function makeSilenceTrack() {
+export function makeSilenceTrack() {
   const audio = new Audio(brapi.runtime.getURL("sound/silence.mp3"))
   audio.loop = true
   const stateMachine = new StateMachine({
@@ -654,7 +631,7 @@ function makeSilenceTrack() {
  * @param {Number} opt.max - maximum number of repetitions
  * @returns {Promise}
  */
-function repeat(opt) {
+export function repeat(opt) {
   if (!opt || !opt.action) throw new Error("Missing action")
   return iter(1)
   function iter(n) {
@@ -669,7 +646,7 @@ function repeat(opt) {
   }
 }
 
-function when(pred, val) {
+export function when(pred, val) {
   if (typeof pred == "function" ? pred() : pred) {
     return {
       when() {
@@ -690,12 +667,12 @@ function when(pred, val) {
   }
 }
 
-function removeAllAttrs(el, recursive) {
+export function removeAllAttrs(el, recursive) {
   while (el.attributes.length > 0) el.removeAttribute(el.attributes[0].name)
   if (recursive) for (const child of el.children) removeAllAttrs(child, true)
 }
 
-function escapeXml(unsafe) {
+export function escapeXml(unsafe) {
   return unsafe.replace(/[<>&'"]/g, function (c) {
     switch (c) {
         case '<': return '&lt;';
@@ -707,7 +684,7 @@ function escapeXml(unsafe) {
   })
 }
 
-var languageTable = (function() {
+export var languageTable = (function() {
   const nameFromCode = new Map([
     ['af', 'Afrikaans'],
     ['af-ZA', 'Afrikaans (South Africa)'],

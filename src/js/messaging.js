@@ -1,4 +1,6 @@
-function registerMessageListener(name, handlers) {
+import { brapi } from "./brapi.js";
+
+export function registerMessageListener(name, handlers) {
   brapi.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
       if (request.dest == name) {
@@ -15,7 +17,7 @@ function registerMessageListener(name, handlers) {
   }
 }
 
-function errorToJson(err) {
+export function errorToJson(err) {
   if (err instanceof Error) {
     return {
       name: err.name,

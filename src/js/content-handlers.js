@@ -1,5 +1,7 @@
+import { brapi } from "./brapi.js";
+import { config } from "./defaults.js";
 
-var contentHandlers = [
+export var contentHandlers = [
   // Unsupported Sites --------------------------------------------------------
   {
     match: function(url) {

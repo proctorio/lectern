@@ -1,5 +1,10 @@
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
+import { config, defaults, getSettings, getSetting, wait, extraAction, truncateRepeatedChars } from "./defaults.js";
+import { getSpeechVoice } from "./tts-engines.js";
+import { Speech } from "./speech.js";
 
-function SimpleSource(texts, opts) {
+export function SimpleSource(texts, opts) {
   opts = opts || {}
   this.ready = Promise.resolve({
     lang: opts.lang,
@@ -23,7 +28,7 @@ function SimpleSource(texts, opts) {
 }
 
 
-function TabSource() {
+export function TabSource() {
   var waiting = true;
   var sendToSource;
 
@@ -76,7 +81,7 @@ function TabSource() {
 }
 
 
-function Doc(source, onEnd) {
+export function Doc(source, onEnd) {
   var info;
   var currentIndex;
   var activeSpeech;

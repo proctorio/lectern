@@ -1,3 +1,6 @@
+import { brapi } from "./brapi.js";
+import { getSettings, getSilenceTrack, waitMillis } from "./defaults.js";
+import { registerMessageListener } from "./messaging.js";
 
 (function() {
   registerMessageListener("contentScript", {
@@ -103,18 +106,18 @@
 
 //helpers --------------------------
 
-var paragraphSplitter = /(?:\s*\r?\n\s*){2,}/;
+export var paragraphSplitter = /(?:\s*\r?\n\s*){2,}/;
 
-function getInnerText(elem) {
+export function getInnerText(elem) {
   var text = elem.innerText;
   return text ? text.trim() : "";
 }
 
-function isNotEmpty(text) {
+export function isNotEmpty(text) {
   return text;
 }
 
-function fixParagraphs(texts) {
+export function fixParagraphs(texts) {
   var out = [];
   var para = "";
   for (var i=0; i<texts.length; i++) {
@@ -139,7 +142,7 @@ function fixParagraphs(texts) {
   return out;
 }
 
-function tryGetTexts(getTexts, millis) {
+export function tryGetTexts(getTexts, millis) {
   return waitMillis(500)
     .then(getTexts)
     .then(function(texts) {
@@ -148,7 +151,7 @@ function tryGetTexts(getTexts, millis) {
     })
 }
 
-function simulateMouseEvent(element, eventName, coordX, coordY) {
+export function simulateMouseEvent(element, eventName, coordX, coordY) {
   element.dispatchEvent(new MouseEvent(eventName, {
     view: window,
     bubbles: true,
@@ -159,7 +162,7 @@ function simulateMouseEvent(element, eventName, coordX, coordY) {
   }));
 }
 
-function simulateClick(elementToClick) {
+export function simulateClick(elementToClick) {
   var box = elementToClick.getBoundingClientRect(),
       coordX = box.left + (box.right - box.left) / 2,
       coordY = box.top + (box.bottom - box.top) / 2;
@@ -168,12 +171,12 @@ function simulateClick(elementToClick) {
   simulateMouseEvent (elementToClick, "click", coordX, coordY);
 }
 
-const getMath = (function() {
+export const getMath = (function() {
   let promise = Promise.resolve(null)
   return () => promise = promise.then(math => math || makeMath())
 })();
 
-async function makeMath() {
+export async function makeMath() {
   //no speech surrogates, math elements are read via their visible text
   return {
     show() {},

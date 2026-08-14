@@ -1,3 +1,7 @@
+import { brapi } from "./brapi.js";
+import { detectTabLanguage, getActiveTab, getTab, getAllFrames } from "./defaults.js";
+import { registerMessageListener } from "./messaging.js";
+import { contentHandlers } from "./content-handlers.js";
 
 brapi.runtime.onInstalled.addListener(function() {
   installContextMenus()
@@ -236,11 +240,8 @@ async function injectContentScript(tab, frameId, extraScripts) {
       frameIds: frameId ? [frameId] : undefined,
     },
     files: [
-      "js/rxjs.umd.min.js",
-      "js/jquery-3.7.1.min.js",
-      "js/defaults.js",
-      "js/messaging.js",
-      "js/content.js",
+      "js/vendor/jquery-3.7.1.min.js",
+      "js/content-entries/content-base.js",
     ]
   })
   const files = extraScripts || await brapi.tabs.sendMessage(tab.id, {dest: "contentScript", method: "getRequireJs"})

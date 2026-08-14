@@ -1,5 +1,8 @@
+import * as rxjs from "./vendor/rxjs.js";
+import { isGoogleNative, isChromeOSNative } from "./defaults.js";
+import { browserTtsEngine, TimeoutTtsEngine } from "./tts-engines.js";
 
-function Speech(texts, options) {
+export function Speech(texts, options) {
   options.rate = (options.rate || 1) * (isGoogleNative(options.voice) ? 0.9 : 1);
 
   for (var i=0; i<texts.length; i++) if (/[\w)]$/.test(texts[i])) texts[i] += '.';

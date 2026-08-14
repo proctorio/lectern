@@ -1,3 +1,8 @@
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
+import { lazy, setI18nText, bgPageInvoke, playAudioHere } from "./defaults.js";
+import { registerMessageListener, errorToJson } from "./messaging.js";
+import { SimpleSource, TabSource, Doc } from "./document.js";
 
 var queryString = new URLSearchParams(location.search)
 var activeDoc;

@@ -1,3 +1,4 @@
+import { getSettings, updateSettings, domReady } from "./defaults.js";
 
 Promise.all([getSettings(), domReady()]).then(([settings]) => {
   $("button.close")

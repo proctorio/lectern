@@ -2,9 +2,21 @@
   "name": "lectern",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Lectern: a local-first text to speech reader for the browser, built for locked-down assessment environments.",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "package": "zip -r build/package.zip _locales css img js sound *.html manifest.json background.js -x \\*.map || true"
+    "build": "node tools/build.js",
+    "vendor": "node tools/vendor.js",
+    "lint": "eslint --fix src/js test tools",
+    "lint:check": "eslint src/js test tools",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "package": "npm run build && cd dist && zip -r ../build/package.zip . -x \\*.map",
+    "audit:remote": "bash scripts/audit-remote-code.sh dist",
+    "audit:manifest": "bash scripts/verify-manifest.sh dist/manifest.json"
   },
   "repository": {
     "type": "git",
@@ -20,5 +32,15 @@
   "bugs": {
     "url": "https://github.com/proctorio/lectern/issues"
   },
-  "homepage": "https://github.com/proctorio/lectern"
+  "homepage": "https://github.com/proctorio/lectern",
+  "devDependencies": {
+    "@proctorio/eslint-config": "4.0.4",
+    "@vitest/coverage-v8": "4.1.10",
+    "@webext-core/fake-browser": "2.0.1",
+    "esbuild": "0.28.2",
+    "eslint": "10.0.0",
+    "jsdom": "30.0.1",
+    "rxjs": "7.8.2",
+    "vitest": "4.1.10"
+  }
 }

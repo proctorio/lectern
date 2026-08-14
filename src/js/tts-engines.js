@@ -1,9 +1,40 @@
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
+import { promiseTimeout, languageTable, getSetting, parseLang, findVoiceByName, findVoiceByLang, isOfflineVoice, isGoogleNative } from "./defaults.js";
 
-var browserTtsEngine = brapi.tts ? new BrowserTtsEngine() : (typeof speechSynthesis != 'undefined' ? new WebSpeechEngine() : new DummyTtsEngine());
+export var browserTtsEngine = brapi.tts ? new BrowserTtsEngine() : (typeof speechSynthesis != 'undefined' ? new WebSpeechEngine() : new DummyTtsEngine());
+
+
+/**
+ * VOICES
+ */
+export const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(
+  rxjs.shareReplay(1)
+)
+
+export async function getSpeechVoice(voiceName, lang) {
+  let voices = await rxjs.firstValueFrom(voices$)
+  var voice;
+  //if a specific voice is indicated
+  if (voiceName) voice = findVoiceByName(voices, voiceName);
+  //if no specific voice indicated, but a preferred voice was configured for the language
+  if (!voice && lang) {
+    const preferredVoiceByLang = (await getSetting("preferredVoices")) || {}
+    voiceName = preferredVoiceByLang[parseLang(lang).lang]
+    if (voiceName) voice = findVoiceByName(voices, voiceName);
+  }
+  //otherwise, auto-select in order: offline, native, any
+  if (!voice && lang) {
+    voice = findVoiceByLang(voices.filter(isOfflineVoice), lang)
+      || findVoiceByLang(voices.filter(isGoogleNative), lang)
+      || findVoiceByLang(voices, lang);
+  }
+  return voice;
+}
 
 
 //synthesized audio cache
-const cache = {
+export const cache = {
   entries: new Map(),
   maxEntries: 5,
   async fetchCached(key, fetchFn, destroyFn) {
@@ -48,7 +79,7 @@ interface TtsEngine {
 }
 */
 
-function BrowserTtsEngine() {
+export function BrowserTtsEngine() {
   brapi.tts.stop()    //workaround: chrome.tts.speak doesn't work first time on cold start for some reason
   this.speak = function(text, options, onEvent) {
     brapi.tts.speak(text, {
@@ -82,7 +113,7 @@ function BrowserTtsEngine() {
 }
 
 
-function WebSpeechEngine() {
+export function WebSpeechEngine() {
   var utter;
   this.speak = function(text, options, onEvent) {
     utter = new SpeechSynthesisUtterance();
@@ -134,14 +165,14 @@ function WebSpeechEngine() {
 }
 
 
-function DummyTtsEngine() {
+export function DummyTtsEngine() {
   this.getVoices = function() {
     return Promise.resolve([]);
   }
 }
 
 
-function TimeoutTtsEngine(baseEngine, startTimeout, endTimeout) {
+export function TimeoutTtsEngine(baseEngine, startTimeout, endTimeout) {
   let speakSub
   this.speak = function(text, options, onEvent) {
     speakSub = new rxjs.Observable(observer => {

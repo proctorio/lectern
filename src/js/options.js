@@ -1,3 +1,8 @@
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
+import { config, defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke } from "./defaults.js";
+import { registerMessageListener } from "./messaging.js";
+import { voices$ } from "./tts-engines.js";
 
 (function() {
   const queryString = getQueryString()

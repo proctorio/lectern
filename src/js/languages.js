@@ -1,3 +1,7 @@
+import { brapi } from "./brapi.js";
+import * as rxjs from "./vendor/rxjs.js";
+import { domReady, setI18nText, getSettings, updateSettings, immediate, groupVoicesByLang } from "./defaults.js";
+import { voices$ } from "./tts-engines.js";
 
 var langList = [
   {code: "ab", name: "аҧсуа бызшәа, аҧсшәа"},
