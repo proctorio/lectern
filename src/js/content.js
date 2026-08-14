@@ -2,184 +2,222 @@ import { brapi } from "./brapi.js";
 import { getSettings, getSilenceTrack, waitMillis } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 
-(function() {
-  registerMessageListener("contentScript", {
-    getRequireJs: getRequireJs,
-    getDocumentInfo: getInfo,
-    getCurrentIndex: getCurrentIndex,
-    getTexts: getTexts
-  })
+(function() 
+{
+	registerMessageListener("contentScript", {
+		getRequireJs: getRequireJs,
+		getDocumentInfo: getInfo,
+		getCurrentIndex: getCurrentIndex,
+		getTexts: getTexts
+	});
 
-  function getInfo() {
-    return {
-      url: location.href,
-      title: document.title,
-      lang: getLang(),
-    }
-  }
+	function getInfo() 
+	{
+		return {
+			url: location.href,
+			title: document.title,
+			lang: getLang()
+		};
+	}
 
-  function getLang() {
-    var lang = document.documentElement.lang || $("html").attr("xml:lang");
-    if (lang) lang = lang.split(",",1)[0].replace(/_/g, '-');
-    return lang;
-  }
+	function getLang() 
+	{
+		var lang = document.documentElement.lang || $("html").attr("xml:lang");
+		if (lang) lang = lang.split(",", 1)[0].replaceAll("_", "-");
+		
+		return lang;
+	}
 
-  function getRequireJs() {
-    if (location.hostname == "docs.google.com") {
-      if (/^\/presentation\/d\//.test(location.pathname)) return ["js/content/google-slides.js"];
-      else if (/\/document\/d\//.test(location.pathname)) return ["js/content/googleDocsUtil.js", "js/content/google-doc.js"];
-      else if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
-      else return ["js/content/html-doc.js"];
-    }
-    else if (location.hostname == "drive.google.com") {
-      if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
-      else return ["js/content/google-drive-preview.js"];
-    }
-    else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
-    else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
-    else if (location.hostname.endsWith("acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
-    else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
-    else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
-    else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
-    else if (location.hostname == "archiveofourown.org") return ["js/content/archiveofourown.js"];
-    else return ["js/content/html-doc.js"];
-  }
+	function getRequireJs() 
+	{
+		if (location.hostname == "docs.google.com") 
+		{
+			if ((/^\/presentation\/d\//).test(location.pathname)) return ["js/content/google-slides.js"];
+			else if ((/\/document\/d\//).test(location.pathname)) return ["js/content/googleDocsUtil.js", "js/content/google-doc.js"];
+			else if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
+			else return ["js/content/html-doc.js"];
+		}
+		else if (location.hostname == "drive.google.com") 
+		{
+			if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
+			else return ["js/content/google-drive-preview.js"];
+		}
+		else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
+		else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
+		else if (location.hostname.endsWith("acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
+		else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
+		else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
+		else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
+		else if (location.hostname == "archiveofourown.org") return ["js/content/archiveofourown.js"];
+		else return ["js/content/html-doc.js"];
+	}
 
-  async function getCurrentIndex() {
-    if (await getSelectedText()) return -100;
-    else return readAloudDoc.getCurrentIndex();
-  }
+	async function getCurrentIndex() 
+	{
+		if (await getSelectedText()) return -100;
+		else return readAloudDoc.getCurrentIndex();
+	}
 
-  async function getTexts(index, quietly) {
-    if (index < 0) {
-      if (index == -100) return (await getSelectedText()).split(paragraphSplitter);
-      else return null;
-    }
-    else {
-      return Promise.resolve(readAloudDoc.getTexts(index, quietly))
-        .then(function(texts) {
-          if (texts && Array.isArray(texts)) {
-            if (!quietly) console.log(texts.join("\n\n"));
-          }
-          return texts;
-        })
-    }
-  }
+	async function getTexts(index, quietly) 
+	{
+		if (index < 0) 
+		{
+			if (index == -100) return (await getSelectedText()).split(paragraphSplitter);
+			else return null;
+		}
+		else 
+		{
+			return Promise.resolve(readAloudDoc.getTexts(index, quietly))
+				.then(function(texts) 
+				{
+					if (texts && Array.isArray(texts)) 
+					{
+						if (!quietly) console.log(texts.join("\n\n"));
+					}
+					
+					return texts;
+				});
+		}
+	}
 
-  function getSelectedText() {
-    if (readAloudDoc.getSelectedText) return readAloudDoc.getSelectedText()
-    return window.getSelection().toString().trim();
-  }
+	function getSelectedText() 
+	{
+		if (readAloudDoc.getSelectedText) return readAloudDoc.getSelectedText();
+		
+		return window.getSelection().toString().trim();
+	}
 
+	getSettings()
+		.then(settings => 
+		{
+			if (settings.fixBtSilenceGap)
+				setInterval(updateSilenceTrack.bind(null, Math.random()), 5000);
+		});
 
-  getSettings()
-    .then(settings => {
-      if (settings.fixBtSilenceGap)
-        setInterval(updateSilenceTrack.bind(null, Math.random()), 5000)
-    })
+	async function updateSilenceTrack(providerId) 
+	{
+		if (!audioCanPlay()) return;
+		const silenceTrack = getSilenceTrack();
+		try 
+		{
+			const should = await sendToPlayer({method: "shouldPlaySilence",
+																																						args: [providerId]});
+			if (should) silenceTrack.start();
+			else silenceTrack.stop();
+		}
+		catch (err) 
+		{
+			silenceTrack.stop();
+		}
+	}
 
-  async function updateSilenceTrack(providerId) {
-    if (!audioCanPlay()) return;
-    const silenceTrack = getSilenceTrack()
-    try {
-      const should = await sendToPlayer({method: "shouldPlaySilence", args: [providerId]})
-      if (should) silenceTrack.start()
-      else silenceTrack.stop()
-    }
-    catch (err) {
-      silenceTrack.stop()
-    }
-  }
+	function audioCanPlay() 
+	{
+		return navigator.userActivation && navigator.userActivation.hasBeenActive;
+	}
 
-  function audioCanPlay() {
-    return navigator.userActivation && navigator.userActivation.hasBeenActive
-  }
+	async function sendToPlayer(message) 
+	{
+		message.dest = "player";
+		const result = await brapi.runtime.sendMessage(message);
+		if (result && result.error) throw result.error;
+		else return result;
+	}
+})();
 
-  async function sendToPlayer(message) {
-    message.dest = "player"
-    const result = await brapi.runtime.sendMessage(message)
-    if (result && result.error) throw result.error
-    else return result
-  }
-})()
-
-
-//helpers --------------------------
+// helpers --------------------------
 
 export var paragraphSplitter = /(?:\s*\r?\n\s*){2,}/;
 
-export function getInnerText(elem) {
-  var text = elem.innerText;
-  return text ? text.trim() : "";
+export function getInnerText(elem) 
+{
+	var text = elem.innerText;
+	
+	return text ? text.trim() : "";
 }
 
-export function isNotEmpty(text) {
-  return text;
+export function isNotEmpty(text) 
+{
+	return text;
 }
 
-export function fixParagraphs(texts) {
-  var out = [];
-  var para = "";
-  for (var i=0; i<texts.length; i++) {
-    if (!texts[i]) {
-      if (para) {
-        out.push(para);
-        para = "";
-      }
-      continue;
-    }
-    if (para) {
-      if (/[-\u2013\u2014]$/.test(para)) para = para.substr(0, para.length-1);
-      else para += " ";
-    }
-    para += texts[i].replace(/[-\u2013\u2014]\r?\n/g, "");
-    if (texts[i].match(/[.!?:)"'\u2019\u201d]$/)) {
-      out.push(para);
-      para = "";
-    }
-  }
-  if (para) out.push(para);
-  return out;
+export function fixParagraphs(texts) 
+{
+	var out = [];
+	var para = "";
+	for (var i = 0; i < texts.length; i++) 
+	{
+		if (!texts[i]) 
+		{
+			if (para) 
+			{
+				out.push(para);
+				para = "";
+			}
+			continue;
+		}
+		if (para) 
+		{
+			if ((/[\u2013\u2014-]$/).test(para)) para = para.slice(0, Math.max(0, para.length - 1));
+			else para += " ";
+		}
+		para += texts[i].replaceAll(/[\u2013\u2014-]\r?\n/g, "");
+		if (texts[i].match(/[!"').:?\u2019\u201D]$/)) 
+		{
+			out.push(para);
+			para = "";
+		}
+	}
+	if (para) out.push(para);
+	
+	return out;
 }
 
-export function tryGetTexts(getTexts, millis) {
-  return waitMillis(500)
-    .then(getTexts)
-    .then(function(texts) {
-      if (texts && !texts.length && millis-500 > 0) return tryGetTexts(getTexts, millis-500);
-      else return texts;
-    })
+export function tryGetTexts(getTexts, millis) 
+{
+	return waitMillis(500)
+		.then(getTexts)
+		.then(function(texts) 
+		{
+			if (texts && !texts.length && millis - 500 > 0) return tryGetTexts(getTexts, millis - 500);
+			else return texts;
+		});
 }
 
-export function simulateMouseEvent(element, eventName, coordX, coordY) {
-  element.dispatchEvent(new MouseEvent(eventName, {
-    view: window,
-    bubbles: true,
-    cancelable: true,
-    clientX: coordX,
-    clientY: coordY,
-    button: 0
-  }));
+export function simulateMouseEvent(element, eventName, coordX, coordY) 
+{
+	element.dispatchEvent(new MouseEvent(eventName, {
+		view: window,
+		bubbles: true,
+		cancelable: true,
+		clientX: coordX,
+		clientY: coordY,
+		button: 0
+	}));
 }
 
-export function simulateClick(elementToClick) {
-  var box = elementToClick.getBoundingClientRect(),
-      coordX = box.left + (box.right - box.left) / 2,
-      coordY = box.top + (box.bottom - box.top) / 2;
-  simulateMouseEvent (elementToClick, "mousedown", coordX, coordY);
-  simulateMouseEvent (elementToClick, "mouseup", coordX, coordY);
-  simulateMouseEvent (elementToClick, "click", coordX, coordY);
+export function simulateClick(elementToClick) 
+{
+	var box = elementToClick.getBoundingClientRect(),
+			coordX = box.left + (box.right - box.left) / 2,
+			coordY = box.top + (box.bottom - box.top) / 2;
+	simulateMouseEvent(elementToClick, "mousedown", coordX, coordY);
+	simulateMouseEvent(elementToClick, "mouseup", coordX, coordY);
+	simulateMouseEvent(elementToClick, "click", coordX, coordY);
 }
 
-export const getMath = (function() {
-  let promise = Promise.resolve(null)
-  return () => promise = promise.then(math => math || makeMath())
+export const getMath = (function() 
+{
+	let promise = Promise.resolve(null);
+	
+	return () => promise = promise.then(math => math || makeMath());
 })();
 
-export async function makeMath() {
-  //no speech surrogates, math elements are read via their visible text
-  return {
-    show() {},
-    hide() {}
-  }
+export async function makeMath() 
+{
+	// no speech surrogates, math elements are read via their visible text
+	return {
+		show() {},
+		hide() {}
+	};
 }

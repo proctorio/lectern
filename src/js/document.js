@@ -4,307 +4,387 @@ import { config, defaults, getSettings, getSetting, wait, extraAction, truncateR
 import { getSpeechVoice } from "./tts-engines.js";
 import { Speech } from "./speech.js";
 
-export function SimpleSource(texts, opts) {
-  opts = opts || {}
-  this.ready = Promise.resolve({
-    lang: opts.lang,
-  })
-  this.isWaiting = function() {
-    return false;
-  }
-  this.getCurrentIndex = function() {
-    return Promise.resolve(0);
-  }
-  this.getTexts = function(index) {
-    return Promise.resolve(index == 0 ? texts : null);
-  }
-  this.close = function() {
-    return Promise.resolve();
-  }
-  this.getUri = function() {
-    var textLen = texts.reduce(function(sum, text) {return sum+text.length}, 0);
-    return "text-selection:(" + textLen + ")" + encodeURIComponent((texts[0] || "").substr(0, 100));
-  }
+export function SimpleSource(texts, opts) 
+{
+	opts = opts || {};
+	this.ready = Promise.resolve({
+		lang: opts.lang
+	});
+	this.isWaiting = function() 
+	{
+		return false;
+	};
+	this.getCurrentIndex = function() 
+	{
+		return Promise.resolve(0);
+	};
+	this.getTexts = function(index) 
+	{
+		return Promise.resolve(index == 0 ? texts : null);
+	};
+	this.close = function() 
+	{
+		return Promise.resolve();
+	};
+	this.getUri = function() 
+	{
+		var textLen = texts.reduce(function(sum, text) { return sum + text.length; }, 0);
+		
+		return "text-selection:(" + textLen + ")" + encodeURIComponent((texts[0] || "").slice(0, 100));
+	};
 }
 
+export function TabSource() 
+{
+	var waiting = true;
+	var sendToSource;
 
-export function TabSource() {
-  var waiting = true;
-  var sendToSource;
+	this.ready = brapi.storage.local.get(["sourceUri"])
+		.then(({sourceUri: uri}) => 
+		{
+			if (uri.startsWith("contentscript:")) 
+			{
+				const tabId = Number(uri.slice(14));
+				sendToSource = sendToContentScript.bind(null, tabId);
+				
+				return sendToSource({method: "getDocumentInfo"});
+			}
+			else throw new Error("Invalid source");
+		})
+		.finally(function() 
+		{
+			waiting = false;
+		});
 
-  this.ready = brapi.storage.local.get(["sourceUri"])
-    .then(({sourceUri: uri}) => {
-      if (uri.startsWith("contentscript:")) {
-        const tabId = Number(uri.substr(14))
-        sendToSource = sendToContentScript.bind(null, tabId)
-        return sendToSource({method: "getDocumentInfo"})
-      }
-      else throw new Error("Invalid source")
-    })
-    .finally(function() {
-      waiting = false;
-    })
+	this.isWaiting = function() 
+	{
+		return waiting;
+	};
+	this.getCurrentIndex = function() 
+	{
+		waiting = true;
+		
+		return sendToSource({method: "getCurrentIndex"})
+			.finally(function() { waiting = false; });
+	};
+	this.getTexts = function(index, quietly) 
+	{
+		waiting = true;
+		
+		return sendToSource({method: "getTexts",
+																							args: [index, quietly]})
+			.finally(function() { waiting = false; });
+	};
+	this.close = function() 
+	{
+		return Promise.resolve();
+	};
+	this.getUri = function() 
+	{
+		return this.ready
+			.then(function(info) { return info.url; });
+	};
 
-  this.isWaiting = function() {
-    return waiting;
-  }
-  this.getCurrentIndex = function() {
-    waiting = true;
-    return sendToSource({method: "getCurrentIndex"})
-      .finally(function() {waiting = false})
-  }
-  this.getTexts = function(index, quietly) {
-    waiting = true;
-    return sendToSource({method: "getTexts", args: [index, quietly]})
-      .finally(function() {waiting = false})
-  }
-  this.close = function() {
-    return Promise.resolve();
-  }
-  this.getUri = function() {
-    return this.ready
-      .then(function(info) {return info.url})
-  }
-
-  async function sendToContentScript(tabId, message) {
-    message.dest = "contentScript"
-    const result = await brapi.tabs.sendMessage(tabId, message)
-      .catch(err => {
-        brapi.storage.local.remove("contentScriptTabId")
-        if (/^(A listener indicated|Could not establish)/.test(err.message)) throw new Error(err.message + " " + message.method)
-        throw err
-      })
-    if (result && result.error) throw result.error
-    else return result
-  }
+	async function sendToContentScript(tabId, message) 
+	{
+		message.dest = "contentScript";
+		const result = await brapi.tabs.sendMessage(tabId, message)
+			.catch(err => 
+			{
+				brapi.storage.local.remove("contentScriptTabId");
+				if ((/^(A listener indicated|Could not establish)/).test(err.message)) throw new Error(err.message + " " + message.method);
+				throw err;
+			});
+		if (result && result.error) throw result.error;
+		else return result;
+	}
 
 }
 
+export function Doc(source, onEnd) 
+{
+	var info;
+	var currentIndex;
+	var activeSpeech;
+	var ready = source.ready
+		.then(function(result) { info = result; });
+	var foundText;
+	const playbackState = new rxjs.BehaviorSubject("resumed");
 
-export function Doc(source, onEnd) {
-  var info;
-  var currentIndex;
-  var activeSpeech;
-  var ready = source.ready
-    .then(function(result) {info = result})
-  var foundText;
-  const playbackState = new rxjs.BehaviorSubject("resumed")
+	this.close = close;
+	this.play = play;
+	this.stop = stop;
+	this.pause = pause;
+	this.getState = getState;
+	this.getActiveSpeech = getActiveSpeech;
+	this.forward = forward;
+	this.rewind = rewind;
+	this.seek = seek;
 
-  this.close = close;
-  this.play = play;
-  this.stop = stop;
-  this.pause = pause;
-  this.getState = getState;
-  this.getActiveSpeech = getActiveSpeech;
-  this.forward = forward;
-  this.rewind = rewind;
-  this.seek = seek;
+	// method close
+	function close() 
+	{
+		playbackState.error({name: "CancellationException",
+																							message: "Playback cancelled"});
+		
+		return ready
+			.catch(function() {})
+			.then(function() 
+			{
+				if (activeSpeech) 
+				{
+					activeSpeech.stop();
+					activeSpeech = null;
+				}
+				source.close();
+			});
+	}
 
-  //method close
-  function close() {
-    playbackState.error({name: "CancellationException", message: "Playback cancelled"})
-    return ready
-      .catch(function() {})
-      .then(function() {
-        if (activeSpeech) {
-          activeSpeech.stop()
-          activeSpeech = null
-        }
-        source.close();
-      })
-  }
+	// method play
+	async function play() 
+	{
+		if (activeSpeech) return activeSpeech.play();
+		await ready;
+		await wait(playbackState, "resumed");
+		currentIndex = await source.getCurrentIndex();
+		await wait(playbackState, "resumed");
+		
+		return readCurrent();
+	}
 
-  //method play
-  async function play() {
-    if (activeSpeech) return activeSpeech.play();
-    await ready
-    await wait(playbackState, "resumed")
-    currentIndex = await source.getCurrentIndex()
-    await wait(playbackState, "resumed")
-    return readCurrent()
-  }
+	async function readCurrent(rewinded) 
+	{
+		const texts = await source.getTexts(currentIndex).catch(err => null);
+		await wait(playbackState, "resumed");
+		if (texts) 
+		{
+			if (texts.length) 
+			{
+				foundText = true;
+				
+				return read(texts, rewinded);
+			}
+			else 
+			{
+				currentIndex++;
+				
+				return readCurrent();
+			}
+		}
+		else 
+		{
+			if (!foundText) throw new Error(JSON.stringify({code: "error_no_text"}));
+			if (onEnd) onEnd();
+		}
+	}
 
-  async function readCurrent(rewinded) {
-    const texts = await source.getTexts(currentIndex).catch(err => null)
-    await wait(playbackState, "resumed")
-    if (texts) {
-      if (texts.length) {
-        foundText = true;
-        return read(texts, rewinded);
-      }
-      else {
-        currentIndex++;
-        return readCurrent();
-      }
-    }
-    else {
-      if (!foundText) throw new Error(JSON.stringify({code: "error_no_text"}))
-      if (onEnd) onEnd()
-    }
-  }
+	async function read(texts, rewinded) 
+	{
+		texts = texts.map(preprocess);
+		if (info.detectedLang == null) 
+		{
+			const lang = await detectLanguage(texts);
+			await wait(playbackState, "resumed");
+			info.detectedLang = lang || "";
+		}
+		if (activeSpeech) return;
+		activeSpeech = await getSpeech(texts);
+		await wait(playbackState, "resumed");
+		activeSpeech.onEnd = function(err) 
+		{
+			if (err) 
+			{
+				if (onEnd) onEnd(err);
+			}
+			else 
+			{
+				activeSpeech = null;
+				currentIndex++;
+				readCurrent()
+					.catch(function(err) 
+					{
+						if (onEnd) onEnd(err);
+					});
+			}
+		};
+		if (rewinded) await activeSpeech.gotoEnd();
+		
+		return activeSpeech.play();
+	}
 
-  async function read(texts, rewinded) {
-    texts = texts.map(preprocess)
-    if (info.detectedLang == null) {
-      const lang = await detectLanguage(texts)
-      await wait(playbackState, "resumed")
-      info.detectedLang = lang || "";
-    }
-    if (activeSpeech) return;
-    activeSpeech = await getSpeech(texts);
-    await wait(playbackState, "resumed")
-    activeSpeech.onEnd = function(err) {
-      if (err) {
-        if (onEnd) onEnd(err);
-      }
-      else {
-        activeSpeech = null;
-        currentIndex++;
-        readCurrent()
-          .catch(function(err) {
-            if (onEnd) onEnd(err)
-          })
-      }
-    };
-    if (rewinded) await activeSpeech.gotoEnd();
-    return activeSpeech.play();
-  }
+	function preprocess(text) 
+	{
+		text = truncateRepeatedChars(text, 3);
+		
+		return text.replaceAll(/https?:\/\/\S+/g, "HTTP URL.");
+	}
 
-  function preprocess(text) {
-    text = truncateRepeatedChars(text, 3)
-    return text.replace(/https?:\/\/\S+/g, "HTTP URL.")
-  }
+	function detectLanguage(texts) 
+	{
+		var minChars = 240;
+		var maxPages = 10;
+		var output = combineTexts("", texts);
+		if (output.length < minChars) 
+		{
+			return accumulateMore(output, currentIndex + 1)
+				.then(detectLanguageOf)
+				.then(extraAction(function() 
+				{
+					// for sources that couldn't flip page silently, flip back to the current page
+					return source.getTexts(currentIndex, true);
+				}));
+		}
+		else 
+		{
+			return detectLanguageOf(output);
+		}
 
-  function detectLanguage(texts) {
-    var minChars = 240;
-    var maxPages = 10;
-    var output = combineTexts("", texts);
-    if (output.length < minChars) {
-      return accumulateMore(output, currentIndex+1)
-        .then(detectLanguageOf)
-        .then(extraAction(function() {
-          //for sources that couldn't flip page silently, flip back to the current page
-          return source.getTexts(currentIndex, true);
-        }))
-    }
-    else {
-      return detectLanguageOf(output);
-    }
+		function combineTexts(output, texts) 
+		{
+			for (var i = 0; i < texts.length && output.length < minChars; i++) output += (texts[i] + " ");
+			
+			return output;
+		}
+		function accumulateMore(output, index) 
+		{
+			return source.getTexts(index, true)
+				.then(function(texts) 
+				{
+					if (!texts) return output;
+					output = combineTexts(output, texts);
+					
+					return output.length < minChars && index - currentIndex < maxPages ? accumulateMore(output, index + 1) : output;
+				});
+		}
+	}
 
-    function combineTexts(output, texts) {
-      for (var i=0; i<texts.length && output.length<minChars; i++) output += (texts[i] + " ");
-      return output;
-    }
-    function accumulateMore(output, index) {
-      return source.getTexts(index, true)
-        .then(function(texts) {
-          if (!texts) return output;
-          output = combineTexts(output, texts);
-          return output.length<minChars && index-currentIndex<maxPages ? accumulateMore(output, index+1) : output;
-        })
-    }
-  }
+	function detectLanguageOf(text) 
+	{
+		if (text.length < 100) 
+		{
+			// too little text for reliable detection, fall back to the declared page lang
+			return Promise.resolve(null);
+		}
+		
+		return browserDetectLanguage(text);
+	}
 
-  function detectLanguageOf(text) {
-    if (text.length < 100) {
-      //too little text for reliable detection, fall back to the declared page lang
-      return Promise.resolve(null);
-    }
-    return browserDetectLanguage(text);
-  }
+	function browserDetectLanguage(text) 
+	{
+		if (!brapi.i18n.detectLanguage) return Promise.resolve(null);
+		
+		return new Promise(function(fulfill) 
+		{
+			brapi.i18n.detectLanguage(text, fulfill);
+		})
+			.then(function(result) 
+			{
+				if (result) 
+				{
+					var list = result.languages.filter(function(item) { return item.language != "und"; });
+					list.sort(function(a, b) { return b.percentage - a.percentage; });
+					
+					return list[0] && list[0].language;
+				}
+				else 
+				{
+					return null;
+				}
+			});
+	}
 
-  function browserDetectLanguage(text) {
-    if (!brapi.i18n.detectLanguage) return Promise.resolve(null);
-    return new Promise(function(fulfill) {
-      brapi.i18n.detectLanguage(text, fulfill);
-    })
-    .then(function(result) {
-      if (result) {
-          var list = result.languages.filter(function(item) {return item.language != "und"});
-          list.sort(function(a,b) {return b.percentage-a.percentage});
-          return list[0] && list[0].language;
-      }
-      else {
-        return null;
-      }
-    })
-  }
+	async function getSpeech(texts) 
+	{
+		const settings = await getSettings();
+		settings.rate = await getSetting("rate" + (settings.voiceName || ""));
+		var lang = (!info.detectedLang || info.lang && info.lang.startsWith(info.detectedLang)) ? info.lang : info.detectedLang;
+		console.log("Declared", info.lang, "- Detected", info.detectedLang, "- Chosen", lang);
+		var options = {
+			rate: settings.rate || defaults.rate,
+			pitch: settings.pitch || defaults.pitch,
+			volume: settings.volume || defaults.volume,
+			lang: config.langMap[lang] || lang || "en-US"
+		};
+		const voice = await getSpeechVoice(settings.voiceName, options.lang);
+		if (!voice) throw new Error(JSON.stringify({code: "error_no_voice",
+																																														lang: options.lang}));
+		options.voice = voice;
+		
+		return new Speech(texts, options);
+	}
 
-  async function getSpeech(texts) {
-    const settings = await getSettings()
-    settings.rate = await getSetting("rate" + (settings.voiceName || ""))
-    var lang = (!info.detectedLang || info.lang && info.lang.startsWith(info.detectedLang)) ? info.lang : info.detectedLang;
-    console.log("Declared", info.lang, "- Detected", info.detectedLang, "- Chosen", lang)
-    var options = {
-      rate: settings.rate || defaults.rate,
-      pitch: settings.pitch || defaults.pitch,
-      volume: settings.volume || defaults.volume,
-      lang: config.langMap[lang] || lang || 'en-US',
-    }
-    const voice = await getSpeechVoice(settings.voiceName, options.lang)
-    if (!voice) throw new Error(JSON.stringify({code: "error_no_voice", lang: options.lang}));
-    options.voice = voice;
-    return new Speech(texts, options);
-  }
+	// method stop
+	function stop() 
+	{
+		return ready
+			.then(function() 
+			{
+				if (activeSpeech) 
+				{
+					activeSpeech.stop();
+					activeSpeech = null;
+				}
+			});
+	}
 
-  //method stop
-  function stop() {
-    return ready
-      .then(function() {
-        if (activeSpeech) {
-          activeSpeech.stop()
-          activeSpeech = null
-        }
-      })
-  }
+	// method pause
+	function pause() 
+	{
+		return ready
+			.then(function() 
+			{
+				if (activeSpeech) return activeSpeech.pause();
+			});
+	}
 
-  //method pause
-  function pause() {
-    return ready
-      .then(function() {
-        if (activeSpeech) return activeSpeech.pause();
-      })
-  }
+	// method getState
+	function getState() 
+	{
+		if (activeSpeech) return activeSpeech.getState();
+		else return "LOADING";
+	}
 
-  //method getState
-  function getState() {
-    if (activeSpeech) return activeSpeech.getState();
-    else return "LOADING"
-  }
+	// method getActiveSpeech
+	function getActiveSpeech() 
+	{
+		return Promise.resolve(activeSpeech);
+	}
 
-  //method getActiveSpeech
-  function getActiveSpeech() {
-    return Promise.resolve(activeSpeech);
-  }
+	// method forward
+	function forward() 
+	{
+		if (activeSpeech) 
+		{
+			if (activeSpeech.canForward()) activeSpeech.forward();
+			else forwardPage();
+		}
+		else return Promise.reject(new Error("Can't forward, not active"));
+	}
 
-  //method forward
-  function forward() {
-    if (activeSpeech) {
-      if (activeSpeech.canForward()) activeSpeech.forward()
-      else forwardPage()
-    }
-    else return Promise.reject(new Error("Can't forward, not active"));
-  }
+	function forwardPage() 
+	{
+		return stop().then(function() { currentIndex++; readCurrent(); });
+	}
 
-  function forwardPage() {
-    return stop().then(function() {currentIndex++; readCurrent()});
-  }
+	// method rewind
+	function rewind() 
+	{
+		if (activeSpeech) 
+		{
+			if (activeSpeech.canRewind()) activeSpeech.rewind();
+			else rewindPage();
+		}
+		else return Promise.reject(new Error("Can't rewind, not active"));
+	}
 
-  //method rewind
-  function rewind() {
-    if (activeSpeech) {
-      if (activeSpeech.canRewind()) activeSpeech.rewind()
-      else rewindPage()
-    }
-    else return Promise.reject(new Error("Can't rewind, not active"));
-  }
+	function rewindPage() 
+	{
+		return stop().then(function() { currentIndex--; readCurrent(true); });
+	}
 
-  function rewindPage() {
-    return stop().then(function() {currentIndex--; readCurrent(true)});
-  }
-
-  function seek(n) {
-    if (activeSpeech) return activeSpeech.seek(n);
-    else return Promise.reject(new Error("Can't seek, not active"));
-  }
+	function seek(n) 
+	{
+		if (activeSpeech) return activeSpeech.seek(n);
+		else return Promise.reject(new Error("Can't seek, not active"));
+	}
 }

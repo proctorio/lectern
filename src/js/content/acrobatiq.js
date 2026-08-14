@@ -1,3 +1,3 @@
-//includes html-doc.js
+// includes html-doc.js
 
-readAloudDoc.ignoreTags = readAloudDoc.ignoreTags.replace(", button,", ",")
+readAloudDoc.ignoreTags = readAloudDoc.ignoreTags.replace(", button,", ",");

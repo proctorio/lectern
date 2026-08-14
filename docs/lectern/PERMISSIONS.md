@@ -10,7 +10,6 @@ same commit as any manifest permission change.
 |---|---|---|
 | `activeTab` | `getActiveTab` in `js/defaults.js`, used by `playTab` in `js/events.js` | Identifies the tab to read when the user invokes a read action. Grants temporary access only on user gesture, which is the minimal model for a reader. |
 | `contextMenus` | `installContextMenus` and the `read-selection` click handler in `js/events.js` | The right-click "read selection" entry point. |
-| `offscreen` | `createOffscreen` in `js/player.js` | MV3 offscreen document for audio playback that survives the popup closing. Audio only, reason `AUDIO_PLAYBACK`. |
 | `scripting` | `injectContentScript` and `injectPlayer` in `js/events.js` | Injects the text extractor and the embedded player frame into the page the user asked to read. Injection happens only on explicit invocation, never at page load. |
 | `storage` | `getSettings` / `updateSettings` in `js/defaults.js` | Persists voice, rate, pitch, volume, and highlighting preferences in `chrome.storage.local`. No read content is ever stored. |
 | `tts` | `BrowserTtsEngine` in `js/tts-engines.js` | The speech engine. All synthesis uses voices installed in the browser and operating system. |
@@ -34,6 +33,9 @@ same commit as any manifest permission change.
 - `identity`: removed in phase 1. No sign-in.
 - `ttsEngine`: removed in phase 2. Lectern consumes voices, it does not
   provide them.
+- `offscreen`: removed in phase 3.5. It existed for URL-audio playback
+  from the cloud voice engines; with those gone in phase 2, chrome.tts and
+  speechSynthesis speak directly and no offscreen document is needed.
 - Install-time `host_permissions`: none. The former
   `https://translate.google.com/` grant died with the Google Translate
   engine in phase 2.

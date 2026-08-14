@@ -2,55 +2,61 @@ import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
 import { promiseTimeout, languageTable, getSetting, parseLang, findVoiceByName, findVoiceByLang, isOfflineVoice, isGoogleNative } from "./defaults.js";
 
-export var browserTtsEngine = brapi.tts ? new BrowserTtsEngine() : (typeof speechSynthesis != 'undefined' ? new WebSpeechEngine() : new DummyTtsEngine());
-
+export var browserTtsEngine = brapi.tts ? new BrowserTtsEngine() : (typeof speechSynthesis != "undefined" ? new WebSpeechEngine() : new DummyTtsEngine());
 
 /**
  * VOICES
  */
-export const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(
-  rxjs.shareReplay(1)
-)
+export const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(rxjs.shareReplay(1));
 
-export async function getSpeechVoice(voiceName, lang) {
-  let voices = await rxjs.firstValueFrom(voices$)
-  var voice;
-  //if a specific voice is indicated
-  if (voiceName) voice = findVoiceByName(voices, voiceName);
-  //if no specific voice indicated, but a preferred voice was configured for the language
-  if (!voice && lang) {
-    const preferredVoiceByLang = (await getSetting("preferredVoices")) || {}
-    voiceName = preferredVoiceByLang[parseLang(lang).lang]
-    if (voiceName) voice = findVoiceByName(voices, voiceName);
-  }
-  //otherwise, auto-select in order: offline, native, any
-  if (!voice && lang) {
-    voice = findVoiceByLang(voices.filter(isOfflineVoice), lang)
-      || findVoiceByLang(voices.filter(isGoogleNative), lang)
-      || findVoiceByLang(voices, lang);
-  }
-  return voice;
+export async function getSpeechVoice(voiceName, lang) 
+{
+	let voices = await rxjs.firstValueFrom(voices$);
+	var voice;
+
+	// if a specific voice is indicated
+	if (voiceName) voice = findVoiceByName(voices, voiceName);
+
+	// if no specific voice indicated, but a preferred voice was configured for the language
+	if (!voice && lang) 
+	{
+		const preferredVoiceByLang = (await getSetting("preferredVoices")) || {};
+		voiceName = preferredVoiceByLang[parseLang(lang).lang];
+		if (voiceName) voice = findVoiceByName(voices, voiceName);
+	}
+
+	// otherwise, auto-select in order: offline, native, any
+	if (!voice && lang) 
+	{
+		voice = findVoiceByLang(voices.filter(isOfflineVoice), lang) ||
+      findVoiceByLang(voices.filter(isGoogleNative), lang) ||
+      findVoiceByLang(voices, lang);
+	}
+	
+	return voice;
 }
 
-
-//synthesized audio cache
+// synthesized audio cache
 export const cache = {
-  entries: new Map(),
-  maxEntries: 5,
-  async fetchCached(key, fetchFn, destroyFn) {
-    const entry = this.entries.get(key)
-    if (entry) return entry.value
-    const value = await fetchFn()
-    this.entries.set(key, {value, destroyFn})
-    while (this.entries.size > this.maxEntries) {
-      const [oldestKey, oldest] = this.entries.entries().next().value
-      oldest.destroyFn?.(oldest.value)
-      this.entries.delete(oldestKey)
-    }
-    return value
-  }
-}
-
+	entries: new Map(),
+	maxEntries: 5,
+	async fetchCached(key, fetchFn, destroyFn) 
+	{
+		const entry = this.entries.get(key);
+		if (entry) return entry.value;
+		const value = await fetchFn();
+		this.entries.set(key, {value,
+																									destroyFn});
+		while (this.entries.size > this.maxEntries) 
+		{
+			const [oldestKey, oldest] = this.entries.entries().next().value;
+			oldest.destroyFn?.(oldest.value);
+			this.entries.delete(oldestKey);
+		}
+		
+		return value;
+	}
+};
 
 /*
 interface Options {
@@ -79,136 +85,167 @@ interface TtsEngine {
 }
 */
 
-export function BrowserTtsEngine() {
-  brapi.tts.stop()    //workaround: chrome.tts.speak doesn't work first time on cold start for some reason
-  this.speak = function(text, options, onEvent) {
-    brapi.tts.speak(text, {
-      voiceName: options.voice.voiceId || options.voice.voiceName,
-      lang: options.lang,
-      rate: options.rate,
-      pitch: options.pitch,
-      volume: options.volume,
-      requiredEventTypes: ["start", "end"],
-      desiredEventTypes: ["start", "end", "error"],
-      onEvent: onEvent
-    })
-  }
-  this.stop = brapi.tts.stop;
-  this.pause = brapi.tts.pause;
-  this.resume = brapi.tts.resume;
-  this.isSpeaking = brapi.tts.isSpeaking;
-  this.getVoices = async function() {
-    const voices = await new Promise(f => brapi.tts.getVoices(f)) || []
-    const platform = await brapi.runtime.getPlatformInfo()
-    if (platform.os == "mac") {
-      for (const voice of voices) {
-          if (voice.remote == false && !voice.voiceName.includes(" ")) {
-            voice.voiceId = voice.voiceName
-            voice.voiceName = "MacOS " + (languageTable.getNameFromCode(voice.lang) || voice.lang) + " [" + voice.voiceId + "]"
-          }
-      }
-    }
-    return voices
-  }
+export function BrowserTtsEngine() 
+{
+	brapi.tts.stop();    // workaround: chrome.tts.speak doesn't work first time on cold start for some reason
+	this.speak = function(text, options, onEvent) 
+	{
+		brapi.tts.speak(text, {
+			voiceName: options.voice.voiceId || options.voice.voiceName,
+			lang: options.lang,
+			rate: options.rate,
+			pitch: options.pitch,
+			volume: options.volume,
+			requiredEventTypes: ["start", "end"],
+			desiredEventTypes: ["start", "end", "error"],
+			onEvent: onEvent
+		});
+	};
+	this.stop = brapi.tts.stop;
+	this.pause = brapi.tts.pause;
+	this.resume = brapi.tts.resume;
+	this.isSpeaking = brapi.tts.isSpeaking;
+	this.getVoices = async function() 
+	{
+		const voices = await new Promise(f => brapi.tts.getVoices(f)) || [];
+		const platform = await brapi.runtime.getPlatformInfo();
+		if (platform.os == "mac") 
+		{
+			for (const voice of voices) 
+			{
+				if (voice.remote == false && !voice.voiceName.includes(" ")) 
+				{
+					voice.voiceId = voice.voiceName;
+					voice.voiceName = "MacOS " + (languageTable.getNameFromCode(voice.lang) || voice.lang) + " [" + voice.voiceId + "]";
+				}
+			}
+		}
+		
+		return voices;
+	};
 }
 
-
-export function WebSpeechEngine() {
-  var utter;
-  this.speak = function(text, options, onEvent) {
-    utter = new SpeechSynthesisUtterance();
-    utter.text = text;
-    utter.voice = options.voice;
-    if (options.lang) utter.lang = options.lang;
-    if (options.pitch) utter.pitch = options.pitch;
-    if (options.rate) utter.rate = options.rate;
-    if (options.volume) utter.volume = options.volume;
-    utter.onstart = onEvent.bind(null, {type: 'start', charIndex: 0});
-    utter.onend = onEvent.bind(null, {type: 'end', charIndex: text.length});
-    utter.onerror = function(event) {
-      if (event.error == "canceled" || event.error == "interrupted") return;
-      onEvent({type: 'error', error: new Error(event.error)});
-    };
-    speechSynthesis.cancel()
-    speechSynthesis.speak(utter);
-  }
-  this.stop = function() {
-    if (utter) utter.onend = null;
-    speechSynthesis.cancel();
-  }
-  this.pause = function() {
-    speechSynthesis.pause();
-  }
-  this.resume = function() {
-    speechSynthesis.resume();
-  }
-  this.isSpeaking = function(callback) {
-    callback(speechSynthesis.speaking);
-  }
-  this.getVoices = function() {
-    return promiseTimeout(1500, "Timeout WebSpeech getVoices", new Promise(function(fulfill) {
-      var voices = speechSynthesis.getVoices() || [];
-      if (voices.length) fulfill(voices);
-      else speechSynthesis.onvoiceschanged = function() {
-        fulfill(speechSynthesis.getVoices() || []);
-      }
-    }))
-    .then(function(voices) {
-      for (var i=0; i<voices.length; i++) voices[i].voiceName = voices[i].name;
-      return voices;
-    })
-    .catch(function(err) {
-      console.error(err);
-      return [];
-    })
-  }
+export function WebSpeechEngine() 
+{
+	var utter;
+	this.speak = function(text, options, onEvent) 
+	{
+		utter = new SpeechSynthesisUtterance();
+		utter.text = text;
+		utter.voice = options.voice;
+		if (options.lang) utter.lang = options.lang;
+		if (options.pitch) utter.pitch = options.pitch;
+		if (options.rate) utter.rate = options.rate;
+		if (options.volume) utter.volume = options.volume;
+		utter.onstart = onEvent.bind(null, {type: "start",
+																																						charIndex: 0});
+		utter.onend = onEvent.bind(null, {type: "end",
+																																				charIndex: text.length});
+		utter.onerror = function(event) 
+		{
+			if (event.error == "canceled" || event.error == "interrupted") return;
+			onEvent({type: "error",
+												error: new Error(event.error)});
+		};
+		speechSynthesis.cancel();
+		speechSynthesis.speak(utter);
+	};
+	this.stop = function() 
+	{
+		if (utter) utter.onend = null;
+		speechSynthesis.cancel();
+	};
+	this.pause = function() 
+	{
+		speechSynthesis.pause();
+	};
+	this.resume = function() 
+	{
+		speechSynthesis.resume();
+	};
+	this.isSpeaking = function(callback) 
+	{
+		callback(speechSynthesis.speaking);
+	};
+	this.getVoices = function() 
+	{
+		return promiseTimeout(1500, "Timeout WebSpeech getVoices", new Promise(function(fulfill) 
+		{
+			var voices = speechSynthesis.getVoices() || [];
+			if (voices.length) fulfill(voices);
+			else speechSynthesis.onvoiceschanged = function() 
+			{
+				fulfill(speechSynthesis.getVoices() || []);
+			};
+		}))
+			.then(function(voices) 
+			{
+				for (var i = 0; i < voices.length; i++) voices[i].voiceName = voices[i].name;
+				
+				return voices;
+			})
+			.catch(function(err) 
+			{
+				console.error(err);
+				
+				return [];
+			});
+	};
 }
 
-
-export function DummyTtsEngine() {
-  this.getVoices = function() {
-    return Promise.resolve([]);
-  }
+export function DummyTtsEngine() 
+{
+	this.getVoices = function() 
+	{
+		return Promise.resolve([]);
+	};
 }
 
-
-export function TimeoutTtsEngine(baseEngine, startTimeout, endTimeout) {
-  let speakSub
-  this.speak = function(text, options, onEvent) {
-    speakSub = new rxjs.Observable(observer => {
-      baseEngine.speak(text, options, event => observer.next(event))
-    }).pipe(
-      rxjs.timeout({
-        first: startTimeout,
-        with() {
-          console.debug(`No 'start' event after ${startTimeout}, will call stop() and retry once`)
-          baseEngine.stop()
-          return rxjs.throwError(() => new Error("Timeout, TTS never started, try picking another voice?"))
-        }
-      }),
-      rxjs.retry(1),
-      rxjs.mergeMap(event =>
-        rxjs.iif(
-          () => event.type == "start",
-          rxjs.timer(endTimeout).pipe(
-            rxjs.map(() => {
-              console.debug(`No 'end' event after ${endTimeout}, will call stop() and generate 'end'`)
-              baseEngine.stop()
-              return {type: "end", charIndex: text.length}
-            }),
-            rxjs.startWith(event)
-          ),
-          rxjs.of(event)
-        )
-      ),
-      rxjs.catchError(error => rxjs.of({type: "error", error})),
-      rxjs.takeWhile(event => event.type != "end" && event.type != "error", true)
-    ).subscribe(onEvent)
-  }
-  this.stop = function() {
-    if (speakSub) speakSub.unsubscribe()
-    baseEngine.stop();
-  }
-  this.isSpeaking = baseEngine.isSpeaking;
+export function TimeoutTtsEngine(baseEngine, startTimeout, endTimeout) 
+{
+	let speakSub;
+	this.speak = function(text, options, onEvent) 
+	{
+		speakSub = new rxjs.Observable(observer => 
+		{
+			baseEngine.speak(text, options, event => observer.next(event));
+		}).pipe(
+			rxjs.timeout({
+				first: startTimeout,
+				with() 
+				{
+					console.debug(`No 'start' event after ${startTimeout}, will call stop() and retry once`);
+					baseEngine.stop();
+					
+					return rxjs.throwError(() => new Error("Timeout, TTS never started, try picking another voice?"));
+				}
+			}),
+			rxjs.retry(1),
+			rxjs.mergeMap(event =>
+				rxjs.iif(
+					() => event.type == "start",
+					rxjs.timer(endTimeout).pipe(
+						rxjs.map(() => 
+						{
+							console.debug(`No 'end' event after ${endTimeout}, will call stop() and generate 'end'`);
+							baseEngine.stop();
+							
+							return {type: "end",
+															charIndex: text.length};
+						}),
+						rxjs.startWith(event)
+					),
+					rxjs.of(event)
+				)),
+			rxjs.catchError(error => rxjs.of({type: "error",
+																																					error})),
+			rxjs.takeWhile(event => event.type != "end" && event.type != "error", true)
+		).subscribe(onEvent);
+	};
+	this.stop = function() 
+	{
+		if (speakSub) speakSub.unsubscribe();
+		baseEngine.stop();
+	};
+	this.isSpeaking = baseEngine.isSpeaking;
 }
-

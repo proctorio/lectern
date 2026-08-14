@@ -19,7 +19,6 @@
   "permissions": [
     "activeTab",
     "contextMenus",
-    "offscreen",
     "scripting",
     "storage",
     "tts"
