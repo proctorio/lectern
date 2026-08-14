@@ -10,6 +10,8 @@ import { voices$ } from "./tts-engines.js";
 	const domReadyPromise = domReady();
 	const playerCheckIn$ = new rxjs.Subject();
 
+	domReadyPromise.then(() => $("#about-version").text(brapi.runtime.getManifest().version));
+
 	registerMessageListener("options", {
 		playerCheckIn() 
 		{
