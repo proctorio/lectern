@@ -13,8 +13,28 @@ export default defineConfig({
 		coverage: {
 			enabled: true,
 			provider: "v8",
-			include: ["src/js/**"],
-			exclude: ["src/js/vendor/**"],
+			// Coverage scope is the core logic modules. Deliberately excluded,
+			// each with a different verification path:
+			// - vendor/**: third-party bundles.
+			// - content/**: classic injected scripts whose behavior depends on
+			//   real layout (jQuery :visible, innerText). jsdom has no layout,
+			//   so unit assertions there would pin the wrong semantics. They
+			//   are exercised in real Chrome by the Playwright suite.
+			// - content-entries/**: bundle shims, no logic.
+			// - popup/options/player/languages/advanced-options: jQuery DOM
+			//   pages, covered by Playwright plus axe scans.
+			// - events.js: service worker orchestration (injection, menus,
+			//   commands), covered by the Playwright extension harness.
+			include: [
+				"src/js/brapi.js",
+				"src/js/defaults.js",
+				"src/js/messaging.js",
+				"src/js/content-handlers.js",
+				"src/js/tts-engines.js",
+				"src/js/speech.js",
+				"src/js/document.js",
+				"src/js/content.js"
+			],
 			reporter: ["text", "cobertura"],
 			reportsDirectory: "./.test_output",
 			thresholds: {
