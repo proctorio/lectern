@@ -28,7 +28,7 @@ export default [
 		languageOptions: {
 			globals: {
 				"$": "readonly",
-				"readAloudDoc": "readonly"
+				"lecternDoc": "readonly"
 			}
 		},
 		rules: {
@@ -110,12 +110,12 @@ export default [
 		// Classic per-site content handlers: injected as plain scripts after
 		// the content-base bundle, they intentionally consume the documented
 		// global surface (see src/js/content-entries/content-base.js) and the
-		// readAloudDoc protocol. Not modules. They share the house formatting
+		// lecternDoc protocol. Not modules. They share the house formatting
 		// (decision D12); upstream cherry-picks onto them are three-way merges,
 		// not clean applies, which the divergence policy already accepts.
 		files: ["src/js/content/**/*.js"],
 		rules: {
-			// The readAloudDoc protocol IS an implicit global handoff between
+			// The lecternDoc protocol IS an implicit global handoff between
 			// separately injected classic scripts. Some handlers deliberately
 			// redeclare or wrap a previously injected handler's global.
 			"no-implicit-globals": "off",
@@ -126,7 +126,7 @@ export default [
 			sourceType: "script",
 			globals: {
 				"$": "readonly",
-				"readAloudDoc": "writable",
+				"lecternDoc": "writable",
 				"googleDocsUtil": "writable",
 				"getInnerText": "readonly",
 				"isNotEmpty": "readonly",

@@ -1,8 +1,8 @@
-var readAloudDoc = new function() 
+var lecternDoc = new function() 
 {
 	var self = this;
 
-	this.ignoreTags = "select, textarea, button, label, audio, video, dialog, embed, menu, nav, noframes, noscript, object, script, style, svg, aside, footer, #footer, .no-read-aloud, [aria-hidden=true]";
+	this.ignoreTags = "select, textarea, button, label, audio, video, dialog, embed, menu, nav, noframes, noscript, object, script, style, svg, aside, footer, #footer, .no-lectern, [aria-hidden=true]";
 
 	this.getCurrentIndex = function() 
 	{
@@ -83,7 +83,7 @@ var readAloudDoc = new function()
 			toRead.push.apply(toRead, findHeadingsFor(textBlocks[i], textBlocks[i - 1]));
 			toRead.push(textBlocks[i]);
 		}
-		$(toRead).addClass("read-aloud");   // for debugging only
+		$(toRead).addClass("lectern-read");   // for debugging only
 
 		// extract texts
 		return toRead.flatMap(getTexts).filter(isNotEmpty);
@@ -116,7 +116,7 @@ var readAloudDoc = new function()
 		};
 		var addBlock = function(elem, multi) 
 		{
-			if (multi) $(elem).data("read-aloud-multi-block", true);
+			if (multi) $(elem).data("lectern-multi-block", true);
 			textBlocks.push(elem);
 		};
 		var walk = function() 
@@ -174,10 +174,10 @@ var readAloudDoc = new function()
 	{
 		var toHide = $(elem).find(":visible").filter(dontRead).hide();
 		$(elem).find("ol, ul").addBack("ol, ul").each(addNumbering);
-		var texts = $(elem).data("read-aloud-multi-block")
+		var texts = $(elem).data("lectern-multi-block")
 			? $(elem).children(":visible").get().map(getText)
 			: getText(elem).split(paragraphSplitter);
-		$(elem).find(".read-aloud-numbering").remove();
+		$(elem).find(".lectern-numbering").remove();
 		toHide.show();
 		
 		return texts;
@@ -190,7 +190,7 @@ var readAloudDoc = new function()
 		if (text && !text.match(/^\(?(\d|[A-Za-z][).])/))
 			children.each(function(index) 
 			{
-				$("<span>").addClass("read-aloud-numbering").text((index + 1) + ". ").prependTo(this);
+				$("<span>").addClass("lectern-numbering").text((index + 1) + ". ").prependTo(this);
 			});
 	}
 

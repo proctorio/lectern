@@ -1,6 +1,6 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { config, defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke } from "./defaults.js";
+import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 
 var queryString = getQueryString();
@@ -16,14 +16,14 @@ registerMessageListener("popup", {
 $(function() 
 {
 	if (queryString.isPopup) $("body").addClass("is-popup");
-	else getCurrentTab().then(function(currentTab) { return updateSettings({readAloudTab: currentTab.id}); });
+	else getCurrentTab().then(function(currentTab) { return updateSettings({sourceTabId: currentTab.id}); });
 });
 
-getSettings(["showHighlighting", "readAloudTab"]).then(async settings => 
+getSettings(["showHighlighting", "sourceTabId"]).then(async settings => 
 {
 	if (settings.showHighlighting == 2 && queryString.isPopup) 
 	{
-		await popout(settings.readAloudTab);
+		await popout(settings.sourceTabId);
 	}
 	else 
 	{
@@ -103,28 +103,6 @@ function handleError(err)
 							}
 						});
 					break;
-			}
-		});
-	}
-	else if (config.browserId == "opera" && (/locked fullscreen/).test(err.message)) 
-	{
-		$("#status").html("Click <a href='#open-player-tab'>here</a> to start read aloud.").show();
-		$("#status a").click(async function() 
-		{
-			try 
-			{
-				playerCheckIn$.pipe(rxjs.take(1)).subscribe(() => $("#btnPlay").click());
-				const tab = await brapi.tabs.create({
-					url: "player.html?opener=popup&autoclose=long",
-					index: 0,
-					active: false
-				});
-				brapi.tabs.update(tab.id, {pinned: true})
-					.catch(console.error);
-			}
-			catch (err) 
-			{
-				handleError(err);
 			}
 		});
 	}

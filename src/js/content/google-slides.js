@@ -1,4 +1,4 @@
-var readAloudDoc = new function() 
+var lecternDoc = new function() 
 {
 	var scroller = $(".punch-filmstrip-scroll").get(0);
 	var autoFlip;
