@@ -33,6 +33,10 @@ EXCLUDES=(
   --exclude-dir=build
   --exclude-dir=docs
   --exclude-dir=coverage
+  # Test output: junit xml, traces, and the e2e test build (which carries a
+  # localhost fixture host permission by design) are not shipped artifacts.
+  --exclude-dir=.test_output
+  --exclude-dir=test-results
   --exclude-dir=.github
   --exclude=NOTICE
   --exclude=FORK.md

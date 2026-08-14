@@ -44,3 +44,6 @@ jspm_packages
 # test and build output
 .test_output/
 dist/
+package-lock.json
+test-results/
+.e2e-dist/
