@@ -86,11 +86,17 @@ body {
 
 /* Transcript card */
 body.is-popup #highlight {
-  /* Reflow (accessibility spec: usable at 200% zoom and at 320 CSS pixel
-     width without horizontal scroll): the preferred width yields to the
-     viewport minus the space-16 body padding. */
+  /* The definite width drives the toolbar popup's window size: Chrome
+     sizes the popup to the document's intrinsic width, and this is the
+     widest block in it (popup.js raises it per the window-size setting).
+     It must carry NO max-width: any clamp (viewport units or percent)
+     collapses the intrinsic width to whatever tiny size the popup window
+     opened at, and the window then never grows; this shipped once and the
+     popup rendered ~100px wide in the field. A fixed-width popup is the
+     design system's own convention for browser-chrome surfaces (RDS
+     STYLE.md section 1.7); reflow for narrow viewports and high zoom is
+     served by the tab reading surface, which has no fixed widths. */
   width: 350px;
-  max-width: calc(100vw - 2rem);
   height: 300px;
 }
 #highlight {

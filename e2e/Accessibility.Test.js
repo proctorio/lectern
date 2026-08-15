@@ -86,21 +86,18 @@ test.describe("accessibility gates", () =>
 		await context.close();
 	});
 
-	test("popup reflows at 320 CSS pixels without horizontal scroll", async() =>
+	/**
+	 * @description Forces the playback surfaces visible with representative
+	 * content; they only appear during playback, which the harness cannot
+	 * start (no TTS voices).
+	 *
+	 * @param {Object} page - The popup or tab page.
+	 * @return {Promise<void>} - Resolves when forced.
+	 */
+	function forcePlaybackSurfaces(page)
 	{
-		const { context, extensionId } = await launchWithExtension();
-		const page = await context.newPage();
-		await page.setViewportSize({ width: 320,
-																															height: 600 });
-		await page.goto(`chrome-extension://${extensionId}/popup.html?isPopup=1`);
-		await page.waitForTimeout(500);
-
-		// The playback surfaces only appear during playback, which the
-		// harness cannot start (no TTS voices), so they are forced visible
-		// with representative content before measuring.
-		await page.evaluate(() =>
+		return page.evaluate(() =>
 		{
-			document.body.classList.add("is-popup");
 			const highlight = document.getElementById("highlight");
 			highlight.style.display = "block";
 			highlight.textContent = "Representative sentence long enough to need wrapping at narrow widths.";
@@ -112,6 +109,52 @@ test.describe("accessibility gates", () =>
 				control.style.display = "inline-block";
 			}
 		});
+	}
+
+	// Reflow contract, two surfaces. The toolbar popup is a fixed-width
+	// browser-chrome surface by design (RDS STYLE.md section 1.7): its
+	// definite widths are what Chrome sizes the popup window from, so they
+	// must never be clamped to the viewport (a clamp shipped once and the
+	// popup collapsed to ~100px in the field). It is asserted to fit its own
+	// designed width. Reflow at 320 CSS pixels (WCAG 1.4.10) is asserted on
+	// the tab reading surface, which is the resizable one and carries no
+	// fixed widths.
+	test("popup content fits its designed width without horizontal scroll", async() =>
+	{
+		const { context, extensionId } = await launchWithExtension();
+		const page = await context.newPage();
+		await page.setViewportSize({ width: 480,
+																															height: 600 });
+		await page.goto(`chrome-extension://${extensionId}/popup.html?isPopup=1`);
+		await page.waitForTimeout(500);
+		await forcePlaybackSurfaces(page);
+
+		// The transcript's designed width (raised by the window-size setting
+		// in popup.js) plus body padding is the popup's intended window
+		// width; nothing may need more than it.
+		const metrics = await page.evaluate(() =>
+		{
+			const highlight = document.getElementById("highlight");
+			const designed = highlight.getBoundingClientRect().width +
+				2 * parseFloat(getComputedStyle(document.body).paddingLeft);
+
+			return {designed,
+										scrollWidth: document.documentElement.scrollWidth};
+		});
+		expect(metrics.scrollWidth, "content wider than the designed popup width")
+			.toBeLessThanOrEqual(Math.ceil(metrics.designed));
+		await context.close();
+	});
+
+	test("tab reading surface reflows at 320 CSS pixels without horizontal scroll", async() =>
+	{
+		const { context, extensionId } = await launchWithExtension();
+		const page = await context.newPage();
+		await page.setViewportSize({ width: 320,
+																															height: 600 });
+		await page.goto(`chrome-extension://${extensionId}/popup.html`);
+		await page.waitForTimeout(500);
+		await forcePlaybackSurfaces(page);
 
 		const metrics = await page.evaluate(() => ({
 			scrollWidth: document.documentElement.scrollWidth,
