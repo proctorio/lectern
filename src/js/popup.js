@@ -153,15 +153,16 @@ async function updateButtons()
 	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
 	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED");
 
-	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech) 
+	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech)
 	{
 		$("#highlight, #toolbar").show();
 		updateHighlighting(speech);
 	}
-	else 
+	else
 	{
 		$("#highlight, #toolbar").hide();
 	}
+	applyPopupWidth(settings);
 }
 
 function updateHighlighting(speech)
@@ -370,43 +371,56 @@ function changeWindowSize(delta)
 		.catch(handleError);
 }
 
-function refreshSize() 
+function refreshSize()
 {
 	return getSettings(["highlightFontSize", "highlightWindowSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
-			var fontSize = getFontSize(settings);
-			var windowSize = getWindowSize(settings);
 			$("#highlight").css({
-				"font-size": fontSize
+				"font-size": getFontSize(settings)
 			});
-			if (queryString.isPopup) $("#highlight").css({
-				width: isMobileOS() ? "100%" : windowSize[0],
-				height: windowSize[1]
-			});
+			if (queryString.isPopup)
+			{
+				$("#highlight").css({height: getWindowSize(settings)[1]});
+				applyPopupWidth(settings);
+			}
 		});
-	function getFontSize(settings) 
+}
+
+// The toolbar popup window follows the body's explicit width: Chrome sizes
+// the popup to the document's intrinsic width, and an explicit body width
+// is the one signal it tracks in both directions, growing and shrinking.
+// While the transcript shows, the body takes the configured window size so
+// the popup matches it; idle, the width clears and the popup collapses to
+// fit the transport row.
+function applyPopupWidth(settings)
+{
+	if (!queryString.isPopup || isMobileOS()) return;
+	$("body").css("width", $("#highlight").is(":visible") ? getWindowSize(settings)[0] : "");
+}
+
+function getFontSize(settings)
+{
+	switch (settings.highlightFontSize || defaults.highlightFontSize)
 	{
-		switch (settings.highlightFontSize || defaults.highlightFontSize) 
-		{
-			case 1: return ".9em";
-			case 2: return "1em";
-			case 3: return "1.1em";
-			case 4: return "1.2em";
-			case 5: return "1.3em";
-			case 6: return "1.4em";
-			case 7: return "1.5em";
-			default: return "1.6em";
-		}
+		case 1: return ".9em";
+		case 2: return "1em";
+		case 3: return "1.1em";
+		case 4: return "1.2em";
+		case 5: return "1.3em";
+		case 6: return "1.4em";
+		case 7: return "1.5em";
+		default: return "1.6em";
 	}
-	function getWindowSize(settings) 
+}
+
+function getWindowSize(settings)
+{
+	switch (settings.highlightWindowSize || defaults.highlightWindowSize)
 	{
-		switch (settings.highlightWindowSize || defaults.highlightWindowSize) 
-		{
-			case 1: return [430, 330];
-			case 2: return [550, 420];
-			default: return [750, 450];
-		}
+		case 1: return [430, 330];
+		case 2: return [550, 420];
+		default: return [750, 450];
 	}
 }
 

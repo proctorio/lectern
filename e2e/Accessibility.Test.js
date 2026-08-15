@@ -129,14 +129,13 @@ test.describe("accessibility gates", () =>
 		await page.waitForTimeout(500);
 		await forcePlaybackSurfaces(page);
 
-		// The transcript's designed width (raised by the window-size setting
-		// in popup.js) plus body padding is the popup's intended window
-		// width; nothing may need more than it.
+		// While reading, applyPopupWidth (popup.js) gives the body the
+		// configured window width and Chrome sizes the popup window to it;
+		// the same width is applied here and nothing may overflow it.
 		const metrics = await page.evaluate(() =>
 		{
-			const highlight = document.getElementById("highlight");
-			const designed = highlight.getBoundingClientRect().width +
-				2 * parseFloat(getComputedStyle(document.body).paddingLeft);
+			document.body.style.width = "430px";
+			const designed = document.body.getBoundingClientRect().width;
 
 			return {designed,
 										scrollWidth: document.documentElement.scrollWidth};

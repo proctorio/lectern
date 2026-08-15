@@ -84,19 +84,18 @@ body {
   font-size: 16px;
 }
 
-/* Transcript card */
+/* Transcript card. The popup window's width is driven by an explicit body
+   width that popup.js applies while the transcript shows (see
+   applyPopupWidth); the transcript just fills it. Neither may carry a
+   viewport-based clamp: Chrome sizes the popup window to the document's
+   intrinsic width, and any 100vw-derived max-width collapses that to
+   whatever tiny size the window opened at, so it never grows (this shipped
+   once and the playing popup rendered ~100px wide in the field). A
+   fixed-width popup is the design system's own convention for
+   browser-chrome surfaces (RDS STYLE.md section 1.7); reflow for narrow
+   viewports and high zoom is served by the tab reading surface, which has
+   no fixed widths. */
 body.is-popup #highlight {
-  /* The definite width drives the toolbar popup's window size: Chrome
-     sizes the popup to the document's intrinsic width, and this is the
-     widest block in it (popup.js raises it per the window-size setting).
-     It must carry NO max-width: any clamp (viewport units or percent)
-     collapses the intrinsic width to whatever tiny size the popup window
-     opened at, and the window then never grows; this shipped once and the
-     popup rendered ~100px wide in the field. A fixed-width popup is the
-     design system's own convention for browser-chrome surfaces (RDS
-     STYLE.md section 1.7); reflow for narrow viewports and high zoom is
-     served by the tab reading surface, which has no fixed widths. */
-  width: 350px;
   height: 300px;
 }
 #highlight {
@@ -183,13 +182,16 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
   display: none;
 }
 
-/* Reflow: below 380px the transport row and the toolbar wrap instead of
-   forcing a horizontal scrollbar. */
+/* Reflow, tab surface only: below 380px the transport row and the toolbar
+   wrap instead of forcing a horizontal scrollbar. The toolbar popup is
+   excluded: its window opens at the intrinsic width of the content, so
+   wrapping there would let the idle popup collapse to a single stacked
+   column of buttons instead of one row. */
 @media (max-width: 379px) {
-  #buttons {
+  body:not(.is-popup) #buttons {
     white-space: normal;
   }
-  #toolbar {
+  body:not(.is-popup) #toolbar {
     flex-wrap: wrap;
   }
 }
