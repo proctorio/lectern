@@ -7,31 +7,25 @@
   <link rel="stylesheet" type="text/css" href="css/base.css">
   <link rel="stylesheet" type="text/css" href="css/common.css">
   <style>
-  /* The page heading is an h1 for document structure; it keeps the 2rem
-     size the bootstrap h2 had so the page looks unchanged. */
   h1 {
-    font-size: 2rem;
-    margin-top: 15px;
-    margin-bottom: 20px;
+    margin-top: var(--space-16);
+    margin-bottom: var(--space-16);
   }
+  /* Per-language voice pickers render as cards on the base surface; the
+     token pairs in common.css carry the dark theme. */
   .voice-list {
     display: inline-block;
-    margin: .2em 0 .8em 1em;
-    padding: .5em 1em;
-    background-color: #f6f6f6;
-    color: #454545;
-    border: 1px solid #c5c5c5;
-    border-radius: 5px;
+    margin: var(--space-4) 0 var(--space-12) var(--space-16);
+    padding: var(--space-8) var(--space-16);
+    background-color: var(--background-surface-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--border-radius-default);
+    box-shadow: var(--shadow-sm);
     white-space: nowrap;
   }
   .voice-list input[type=radio] {
-    margin-right: .4em;
-  }
-  .dark-mode .voice-list {
-    background-color: #333;
-    border: none;
-    box-shadow: 1px 1px black;
-    color: #ddd;
+    margin-right: var(--space-6);
+    accent-color: var(--background-success-default);
   }
   </style>
 

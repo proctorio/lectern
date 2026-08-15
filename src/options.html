@@ -27,10 +27,11 @@
       <span id="hotkeys-link" role="link" tabindex="0" data-i18n="options_hotkeys_link"></span>
     </div>
 
+    <section class="card">
     <div class="layout">
       <div>
         <label for="voices" data-i18n="options_voice_label"></label>
-        <button id="languages-edit-button" type="button" class="btn btn-sm btn-light" data-i18n-label="options_languages_edit_label">
+        <button id="languages-edit-button" type="button" class="btn btn-sm btn-outlined" data-i18n-label="options_languages_edit_label">
           <i class="material-icons" aria-hidden="true">filter_alt</i>
         </button>
       </div>
@@ -41,7 +42,7 @@
 
       <div>
         <label id="rate-label" for="rate-input" data-i18n="options_rate_label"></label>
-        <button id="rate-edit-button" type="button" class="btn btn-sm btn-light" data-i18n-label="options_rate_edit_label">
+        <button id="rate-edit-button" type="button" class="btn btn-sm btn-outlined" data-i18n-label="options_rate_edit_label">
           <i class="material-icons" aria-hidden="true">mode_edit</i>
         </button>
       </div>
@@ -77,22 +78,24 @@
       </select>
 
     </div>
+    </section>
 
-    <div class="form-group" id="exam-mode">
+    <section class="card" id="exam-mode">
       <h2 class="section-heading" data-i18n="options_exam_heading"></h2>
       <label>
         <input type="checkbox" id="exam-safe-mode" aria-describedby="exam-safe-description">
         <span data-i18n="options_exam_safe_label"></span>
       </label>
       <small id="exam-safe-description" class="form-text text-muted" data-i18n="options_exam_safe_description"></small>
-    </div>
+    </section>
 
-    <div class="form-group buttons">
-      <button type="button" id="test-voice" class="btn btn-info">
+    <section class="card">
+    <div class="buttons">
+      <button type="button" id="test-voice" class="btn btn-filled">
         <div class="spinner" aria-hidden="true"></div>
         <span data-i18n="options_test_button"></span>
       </button>
-      <button type="button" id="reset" class="btn btn-warning" data-i18n="options_reset_button"></button>
+      <button type="button" id="reset" class="btn btn-outlined" data-i18n="options_reset_button"></button>
       <span class="green-check" aria-hidden="true">
         <i class="material-icons">check</i>
       </span>
@@ -101,10 +104,9 @@
     <div class="form-group">
       <small id="status" role="alert"></small>
     </div>
+    </section>
 
-    <hr>
-
-    <div class="form-group" id="about">
+    <section class="card" id="about">
       <h2 class="section-heading" data-i18n="options_about_heading"></h2>
       <!-- Attribution is deliberately not localized: the notice ships verbatim
            in every locale to satisfy the MIT license attribution requirement. -->
@@ -115,7 +117,7 @@
         Lectern is an independent project and is not affiliated with or endorsed by the original author.
         The complete license text is distributed with this extension in the LICENSE and NOTICE files.
       </small>
-    </div>
+    </section>
   </main>
 </body>
 </html>
