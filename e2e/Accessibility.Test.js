@@ -130,18 +130,28 @@ test.describe("accessibility gates", () =>
 		await forcePlaybackSurfaces(page);
 
 		// While reading, applyPopupWidth (popup.js) gives the body the
-		// configured window width and Chrome sizes the popup window to it;
-		// the same width is applied here and nothing may overflow it.
+		// configured window width and Chrome sizes the popup window to it.
+		// The window is simulated at exactly that size (scrollWidth floors at
+		// the viewport, so measuring needs the viewport to BE the designed
+		// width); nothing may overflow it.
+		const designed = await page.evaluate(() =>
+		{
+			document.body.style.width = "430px";
+
+			return Math.ceil(document.body.getBoundingClientRect().width);
+		});
+		await page.setViewportSize({ width: designed,
+																															height: 600 });
+		await forcePlaybackSurfaces(page);
 		const metrics = await page.evaluate(() =>
 		{
 			document.body.style.width = "430px";
-			const designed = document.body.getBoundingClientRect().width;
 
-			return {designed,
-										scrollWidth: document.documentElement.scrollWidth};
+			return {scrollWidth: document.documentElement.scrollWidth,
+										clientWidth: document.documentElement.clientWidth};
 		});
 		expect(metrics.scrollWidth, "content wider than the designed popup width")
-			.toBeLessThanOrEqual(Math.ceil(metrics.designed));
+			.toBeLessThanOrEqual(metrics.clientWidth);
 		await context.close();
 	});
 
