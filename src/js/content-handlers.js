@@ -126,11 +126,71 @@ export var contentHandlers = [
 		}
 	},
 
+	// Canvas LMS ---------------------------------------------------------------
+	// Classic quizzes render in the top frame; New Quizzes render in a
+	// cross-origin LTI tool frame, so course and quiz pages need webNavigation
+	// to resolve that frame plus the instructure origins to inject into it.
+	{
+		match: function(url)
+		{
+			// Quiz surfaces only. Ordinary course pages (wiki, files, pages)
+			// keep the default handler and activeTab, with no permission prompt.
+			// New Quizzes launched through assignment URLs are a known gap for
+			// the live Canvas pass in the QA matrix.
+			return (/^https:\/\/[^/]+\.instructure\.com\//).test(url) &&
+				(/\/(quizzes|assessments)([#/?]|$|\/)/).test(url);
+		},
+		targetOrigins: ["https://*.instructure.com/"],
+		validate: function()
+		{
+			var perms = {
+				permissions: ["webNavigation"],
+				origins: this.targetOrigins
+			};
+
+			return brapi.permissions.contains(perms)
+				.then(function(has)
+				{
+					if (!has) throw new Error(JSON.stringify({code: "error_add_permissions",
+																																															perms: perms}));
+				});
+		},
+		getFrameId: function(frames)
+		{
+			var topFrame = frames.find(function(frame)
+			{
+				return frame.frameId == 0;
+			});
+			var topHost = topFrame && topFrame.url ? getHostname(topFrame.url) : "";
+			var frame = frames.find(function(frame)
+			{
+				if (!frame.url || frame.frameId == 0) return false;
+				var host = getHostname(frame.url);
+
+				return host != topHost && (host.includes("quiz-lti") || host.endsWith(".instructure.com"));
+			});
+
+			return frame && frame.frameId;
+		}
+	},
+
 	// default -------------------------------------------------------------------
 	{
-		match: function() 
+		match: function()
 		{
 			return true;
 		}
 	}
 ];
+
+function getHostname(url)
+{
+	try
+	{
+		return new URL(url).hostname;
+	}
+	catch (err)
+	{
+		return "";
+	}
+}

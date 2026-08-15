@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fixture Quiz</title>
+  <style>
+    /* The standard visually-hidden clip pattern used by LMS themes for
+       screen-reader-only text. The text stays in the render tree (and in
+       innerText) while being invisible on screen. */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Unit 4 Assessment</h1>
+    <p>
+      This assessment fixture reproduces the mechanism behind the exam
+      extraction findings: answer text that lives only inside labels bound to
+      radio inputs, a screen-reader-only legend that would otherwise leak into
+      the spoken text, and an image whose alternative text must be spoken even
+      though innerText never contains it.
+    </p>
+    <div class="question">
+      <p>
+        Question one. A student is comparing the roles of the organelles in a
+        eukaryotic cell during a period of rapid growth. Based on the readings
+        from this unit, which statement best describes the primary function of
+        the organelle responsible for supplying usable energy to the cell?
+      </p>
+      <fieldset>
+        <legend class="visually-hidden">Group of answer choices</legend>
+        <div class="choice">
+          <label>
+            <input type="radio" name="q1" value="a">
+            The mitochondria supply most of the cell's usable energy
+          </label>
+        </div>
+        <div class="choice">
+          <label>
+            <input type="radio" name="q1" value="b">
+            The ribosomes assemble proteins from amino acid chains
+          </label>
+        </div>
+        <div class="choice">
+          <label>
+            <input type="radio" name="q1" value="c">
+            The nucleus stores and protects the genetic material
+          </label>
+        </div>
+        <div class="choice">
+          <label>
+            <input type="radio" name="q1" value="d">
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                 alt="A bar chart showing plant growth doubling in week two"
+                 width="24" height="16">
+            The cell membrane regulates what enters and leaves the cell
+          </label>
+        </div>
+      </fieldset>
+    </div>
+    <table>
+      <caption>Recorded plant growth by week</caption>
+      <thead>
+        <tr><th>Week</th><th>Height in centimeters</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>One</td><td>4</td></tr>
+        <tr><td>Two</td><td>8</td></tr>
+        <tr><td>Three</td><td>16</td></tr>
+      </tbody>
+    </table>
+    <p>
+      This trailing paragraph closes the fixture. It exists so the extractor
+      has a readable block after the table, keeps the total character count
+      above the low-threshold retry heuristic, and verifies that reading
+      continues in document order after the answer choices and the data table
+      have been announced.
+    </p>
+  </main>
+</body>
+</html>

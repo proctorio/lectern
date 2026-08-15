@@ -1,5 +1,5 @@
 import { brapi } from "./brapi.js";
-import { detectTabLanguage, getActiveTab, getTab, getAllFrames } from "./defaults.js";
+import { detectTabLanguage, getActiveTab, getTab, getAllFrames, assertExamSafeTabAllowed } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 import { contentHandlers } from "./content-handlers.js";
 
@@ -15,7 +15,7 @@ var handlers = {
 	playText: playText,
 	playTab: playTab,
 	reloadAndPlayTab: reloadAndPlayTab,
-	stop: stop,
+	stop: stopAndTeardown,
 	pause: pause,
 	resume: resume,
 	getPlaybackState: getPlaybackState,
@@ -50,21 +50,84 @@ function installContextMenus()
  * Context menu handlers
  */
 if (brapi.contextMenus)
-	brapi.contextMenus.onClicked.addListener(function(info, tab) 
+	brapi.contextMenus.onClicked.addListener(function(info, tab)
 	{
 		if (info.menuItemId == "read-selection")
-			Promise.resolve()
-				.then(function() 
-				{
-					if (tab && tab.id != -1) return detectTabLanguage(tab.id);
-					else return undefined;
-				})
-				.then(function(lang) 
-				{
-					return playText(info.selectionText, {lang: lang});
-				})
+			readSelection(info, tab)
 				.catch(handleHeadlessError);
 	});
+
+// Unifies the context-menu path with the popup path (finding F8): when the
+// click came from the top frame of a scriptable tab, route through playTab,
+// whose content script selection path reads only the selection with
+// paragraph structure, MathML handling, and the declared page language
+// preserved. Fall back to Chrome's flattened info.selectionText only when
+// the content script cannot run there (chrome:// and similar), or when the
+// selection lives in a subframe the top-frame content script cannot see.
+async function readSelection(info, tab)
+{
+	const tabId = (tab && tab.id != -1) ? tab.id : null;
+	if (tabId != null && isTopFrameClick(info))
+	{
+		try
+		{
+			// Selections in closed shadow roots or text controls are invisible
+			// to the content script even in the top frame; playTab would then
+			// read the whole page instead of the selection. Probe first and
+			// fall back to the flattened selection text when invisible.
+			if (await probeSelectionVisible(tabId))
+			{
+				await playTab(tabId);
+
+				return;
+			}
+		}
+		catch (err)
+		{
+			if (!isInjectionBlocked(err)) throw err;
+		}
+	}
+	const lang = tabId != null ? await detectTabLanguage(tabId) : undefined;
+	await playText(info.selectionText, {lang: lang});
+}
+
+// Reports whether the top frame's own selection is nonempty, which is the
+// precondition for the content script selection path to read the right text.
+async function probeSelectionVisible(tabId)
+{
+	const results = await brapi.scripting.executeScript({
+		target: {tabId: tabId},
+		func: function()
+		{
+			var selection = window.getSelection && window.getSelection();
+
+			return Boolean(selection && selection.toString().trim());
+		}
+	});
+
+	return Boolean(results && results[0] && results[0].result);
+}
+
+// The context menu reports the frame the click happened in; frameId 0 is
+// the top frame. Selections in subframes are invisible to the top-frame
+// content script, so only top-frame clicks route through playTab.
+export function isTopFrameClick(info)
+{
+	return !info.frameId;
+}
+
+// Decides whether a playTab failure means the content script cannot run in
+// that tab, in which case the context-menu read falls back to the flattened
+// selection text: the unsupported-page and file-access validations, missing
+// optional permissions (the headless context has no prompt UI), and the
+// browser refusing script injection. Anything else is a real playback error
+// and propagates.
+export function isInjectionBlocked(err)
+{
+	if (!err || !err.message) return false;
+
+	return (/error_page_unreadable|error_file_access|error_add_permissions|cannot access|cannot be scripted|missing host permission/i).test(err.message);
+}
 
 /**
  * Shortcut keys handlers
@@ -79,7 +142,7 @@ if (brapi.commands)
 				{
 					switch (stateInfo.state) 
 					{
-						case "PLAYING": return command == "pause" ? pause() : stop();
+						case "PLAYING": return command == "pause" ? pause() : stopAndTeardown();
 						case "PAUSED": return resume();
 						case "STOPPED": return playTab();
 					}
@@ -88,7 +151,7 @@ if (brapi.commands)
 		}
 		else if (command == "stop") 
 		{
-			stop()
+			stopAndTeardown()
 				.catch(handleHeadlessError);
 		}
 		else if (command == "forward") 
@@ -151,6 +214,9 @@ async function playTab(tabId)
 {
 	const tab = tabId ? await getTab(tabId) : await getActiveTab();
 	if (!tab) throw new Error(JSON.stringify({code: "error_page_unreadable"}));
+
+	// Exam-safe mode reads the active tab only (milestone M5).
+	await assertExamSafeTabAllowed(tab);
 
 	const task = currentTask.begin();
 	try 
@@ -215,6 +281,37 @@ function stop()
 	return sendToPlayer({method: "stop"});
 }
 
+// User-initiated stop: also tears the embedded player frame out of the host
+// page so a stopped read leaves the page DOM exactly as it was found. The
+// plain stop() above stays frame-preserving because playTab uses it as the
+// player liveness probe right before reusing or reinjecting the player.
+async function stopAndTeardown()
+{
+	await stop();
+	try
+	{
+		const {sourceUri} = await brapi.storage.local.get(["sourceUri"]);
+		if (sourceUri && sourceUri.startsWith("contentscript:"))
+		{
+			const tabId = Number(sourceUri.slice(14));
+			await brapi.scripting.executeScript({
+				target: {tabId: tabId},
+				func: function(prefix)
+				{
+					var frames = document.querySelectorAll("iframe[src^='" + prefix + "']");
+					for (var i = 0; i < frames.length; i++) frames[i].remove();
+				},
+				args: [brapi.runtime.getURL("player.html")]
+			});
+		}
+	}
+	catch (err)
+	{
+		// the tab may be gone; a failed teardown must not fail the stop
+		console.debug("player frame teardown skipped", err);
+	}
+}
+
 function pause() 
 {
 	return sendToPlayer({method: "pause"});
@@ -248,10 +345,10 @@ function rewind()
 	return sendToPlayer({method: "rewind"});
 }
 
-function seek(n) 
+function seek(n, offset)
 {
 	return sendToPlayer({method: "seek",
-																						args: [n]});
+																						args: [n, offset]});
 }
 
 function handleHeadlessError(err) 

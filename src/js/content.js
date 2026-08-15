@@ -1,5 +1,5 @@
 import { brapi } from "./brapi.js";
-import { getSettings, getSilenceTrack, waitMillis } from "./defaults.js";
+import { config, getSettings, getSilenceTrack, waitMillis } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 
 (function() 
@@ -49,7 +49,22 @@ import { registerMessageListener } from "./messaging.js";
 		else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
 		else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
 		else if (location.hostname == "archiveofourown.org") return ["js/content/archiveofourown.js"];
+		else if (location.hostname.endsWith(".instructure.com"))
+		{
+			if (hasQuizPath() || hasQuizMarkup()) return ["js/content/html-doc.js", "js/content/canvas-quiz.js"];
+			else return ["js/content/html-doc.js"];
+		}
 		else return ["js/content/html-doc.js"];
+	}
+
+	function hasQuizPath()
+	{
+		return (/\/(quizzes|assessments)(\/|$)/).test(location.pathname);
+	}
+
+	function hasQuizMarkup()
+	{
+		return Boolean(document.querySelector("#questions, .question_holder, .display_question, .quiz_sortable"));
 	}
 
 	async function getCurrentIndex() 
@@ -111,9 +126,30 @@ import { registerMessageListener } from "./messaging.js";
 		}
 	}
 
-	function audioCanPlay() 
+	function audioCanPlay()
 	{
 		return navigator.userActivation && navigator.userActivation.hasBeenActive;
+	}
+
+	// F6 overlay auto-announce (milestone M5): in exam-safe mode, watch for
+	// the proctoring intervention overlay and forward its text to the
+	// player's announce channel. This is the one sanctioned exception to
+	// never reading without an explicit user action. Detection ships
+	// disabled: config.EXAM_OVERLAY_SELECTOR is empty until decision D15
+	// supplies the overlay DOM contract; the examOverlaySelector storage
+	// override exists so tests can exercise the channel until D15 lands.
+	getSettings(["examSafeMode", "examOverlaySelector"])
+		.then(settings =>
+		{
+			const selector = getExamOverlaySelector(settings);
+			if (selector) watchExamOverlay(selector, announceToPlayer);
+		});
+
+	function announceToPlayer(text)
+	{
+		sendToPlayer({method: "announce",
+																args: [text]})
+			.catch(console.error);
 	}
 
 	async function sendToPlayer(message) 
@@ -206,12 +242,75 @@ export function simulateClick(elementToClick)
 	simulateMouseEvent(elementToClick, "click", coordX, coordY);
 }
 
-export const getMath = (function() 
+export const getMath = (function()
 {
 	let promise = Promise.resolve(null);
-	
+
 	return () => promise = promise.then(math => math || makeMath());
 })();
+
+// exam overlay announcements (F6) --------------------------
+
+// Debounce window for overlay mutation bursts, in milliseconds.
+export const overlayDebounceMillis = 300;
+
+// Resolves the overlay selector to watch: exam-safe mode must be on and a
+// selector must be configured. The examOverlaySelector storage key wins
+// over the config constant; it is a test seam that decision D15's selector
+// contract will replace.
+export function getExamOverlaySelector(settings)
+{
+	if (!settings || !settings.examSafeMode) return null;
+
+	return settings.examOverlaySelector || config.EXAM_OVERLAY_SELECTOR || null;
+}
+
+// Watches the document for an element matching the overlay selector and
+// calls notify with its text once per overlay element. Mutation bursts are
+// debounced, and the observer disconnects on page hide. Returns the stop
+// function for callers that need to tear down earlier.
+export function watchExamOverlay(selector, notify)
+{
+	var timer;
+	var lastAnnounced;
+	const observer = new MutationObserver(function()
+	{
+		clearTimeout(timer);
+		timer = setTimeout(checkOverlay, overlayDebounceMillis);
+	});
+	observer.observe(document.documentElement, {childList: true,
+																																													subtree: true});
+	window.addEventListener("pagehide", stopWatching);
+
+	return stopWatching;
+
+	function stopWatching()
+	{
+		clearTimeout(timer);
+		observer.disconnect();
+		window.removeEventListener("pagehide", stopWatching);
+	}
+
+	function checkOverlay()
+	{
+		const overlay = document.querySelector(selector);
+		if (!overlay || overlay == lastAnnounced) return;
+		const text = getOverlayText(overlay);
+		if (!text) return;
+		lastAnnounced = overlay;
+		notify(text);
+	}
+}
+
+// innerText of an unrendered element falls back to textContent in the
+// browser; jsdom (the unit suite) implements no innerText at all, so the
+// same fallback is spelled out here.
+function getOverlayText(overlay)
+{
+	const text = overlay.innerText != null ? overlay.innerText : overlay.textContent;
+
+	return text ? text.trim() : "";
+}
 
 export async function makeMath() 
 {

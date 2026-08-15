@@ -4,6 +4,13 @@ import { config, defaults, getSettings, getSetting, wait, extraAction, truncateR
 import { getSpeechVoice } from "./tts-engines.js";
 import { Speech } from "./speech.js";
 
+// Language detection confidence bar (finding F8): a detected language may
+// override the declared page language only when the sampled text is at
+// least detectMinChars long AND the browser reports the detection reliable
+// with the top candidate at or above detectMinPercentage.
+const detectMinChars = 100;
+const detectMinPercentage = 80;
+
 export function SimpleSource(texts, opts) 
 {
 	opts = opts || {};
@@ -258,38 +265,39 @@ export function Doc(source, onEnd)
 		}
 	}
 
-	function detectLanguageOf(text) 
+	// Confidence bar for overriding a declared page language with a detected
+	// one (finding F8): the sample must be long enough, the browser must flag
+	// the detection reliable, and the top candidate must carry a dominant
+	// share of the sample. Anything weaker returns null, which keeps the
+	// declared language when one is present.
+	function detectLanguageOf(text)
 	{
-		if (text.length < 100) 
+		if (text.length < detectMinChars)
 		{
 			// too little text for reliable detection, fall back to the declared page lang
 			return Promise.resolve(null);
 		}
-		
+
 		return browserDetectLanguage(text);
 	}
 
-	function browserDetectLanguage(text) 
+	function browserDetectLanguage(text)
 	{
 		if (!brapi.i18n.detectLanguage) return Promise.resolve(null);
-		
-		return new Promise(function(fulfill) 
+
+		return new Promise(function(fulfill)
 		{
 			brapi.i18n.detectLanguage(text, fulfill);
 		})
-			.then(function(result) 
+			.then(function(result)
 			{
-				if (result) 
-				{
-					var list = result.languages.filter(function(item) { return item.language != "und"; });
-					list.sort(function(a, b) { return b.percentage - a.percentage; });
-					
-					return list[0] && list[0].language;
-				}
-				else 
-				{
-					return null;
-				}
+				if (!result || !result.isReliable) return null;
+				var list = result.languages.filter(function(item) { return item.language != "und"; });
+				list.sort(function(a, b) { return b.percentage - a.percentage; });
+				var top = list[0];
+				if (!top || top.percentage < detectMinPercentage) return null;
+
+				return top.language;
 			});
 	}
 
@@ -382,9 +390,9 @@ export function Doc(source, onEnd)
 		return stop().then(function() { currentIndex--; readCurrent(true); });
 	}
 
-	function seek(n) 
+	function seek(n, offset)
 	{
-		if (activeSpeech) return activeSpeech.seek(n);
+		if (activeSpeech) return activeSpeech.seek(n, offset);
 		else return Promise.reject(new Error("Can't seek, not active"));
 	}
 }

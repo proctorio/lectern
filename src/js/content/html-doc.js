@@ -76,14 +76,14 @@ var lecternDoc = new function()
 			}
 		}
 
-		// mark the elements to be read
+		// collect the elements to be read. No marker class is added: extraction
+		// must leave the page DOM exactly as it found it (docs/lectern/04).
 		var toRead = [];
-		for (var i = 0; i < textBlocks.length; i++) 
+		for (var i = 0; i < textBlocks.length; i++)
 		{
 			toRead.push.apply(toRead, findHeadingsFor(textBlocks[i], textBlocks[i - 1]));
 			toRead.push(textBlocks[i]);
 		}
-		$(toRead).addClass("lectern-read");   // for debugging only
 
 		// extract texts
 		return toRead.flatMap(getTexts).filter(isNotEmpty);
@@ -170,17 +170,36 @@ var lecternDoc = new function()
 										stdev: Math.sqrt(variance)};
 	}
 
-	function getTexts(elem) 
+	function getTexts(elem)
 	{
+		// Every temporary mutation must be reverted even when extraction throws
+		// mid-block: leaked surrogate spans or still-hidden answer labels would
+		// permanently alter visible exam content.
 		var toHide = $(elem).find(":visible").filter(dontRead).hide();
-		$(elem).find("ol, ul").addBack("ol, ul").each(addNumbering);
-		var texts = $(elem).data("lectern-multi-block")
-			? $(elem).children(":visible").get().map(getText)
-			: getText(elem).split(paragraphSplitter);
-		$(elem).find(".lectern-numbering").remove();
-		toHide.show();
-		
-		return texts;
+		try
+		{
+			$(elem).find("ol, ul").addBack("ol, ul").each(addNumbering);
+			$(elem).find("fieldset").addBack("fieldset").each(addChoiceNumbering);
+			$(elem).find("img[alt]").filter(":visible").each(addAltText);
+
+			return $(elem).data("lectern-multi-block")
+				? $(elem).children(":visible").get().map(getText)
+				: getText(elem).split(paragraphSplitter);
+		}
+		finally
+		{
+			$(elem).find(".lectern-numbering, .lectern-alt").remove();
+			toHide.show();
+		}
+	}
+
+	// innerText never contains image alt text. Mirroring the math surrogate
+	// pattern, a temporary span carries the alt text at the image's position
+	// while the block is read, then is removed in the same cleanup pass.
+	function addAltText()
+	{
+		var alt = ($(this).attr("alt") || "").trim();
+		if (alt) $("<span>").addClass("lectern-alt").text(" " + alt + " ").insertAfter(this);
 	}
 
 	function addNumbering() 
@@ -194,12 +213,95 @@ var lecternDoc = new function()
 			});
 	}
 
-	function dontRead() 
+	function addChoiceNumbering()
+	{
+		if (!isChoiceFieldset(this)) return;
+		$(this).find("label")
+			.filter(function()
+			{
+				// nested choice fieldsets: a label already numbered by an outer
+				// fieldset pass is skipped, so numbering never double-applies
+				return isChoiceLabel(this) && $(this).is(":visible") &&
+					!$(this).children(".lectern-numbering").length;
+			})
+			.each(function(index)
+			{
+				$("<span>").addClass("lectern-numbering").text((index + 1) + ". ").prependTo(this);
+			});
+	}
+
+	function dontRead()
 	{
 		var float = $(this).css("float");
 		var position = $(this).css("position");
-		
-		return $(this).is(self.ignoreTags) || $(this).is("sup") || float == "right" || position == "fixed";
+
+		// Labels that carry radio or checkbox choice text are read; the bare
+		// "label" entry in ignoreTags only hides plain form labels.
+		var ignoreTags = isChoiceLabel(this) ? getIgnoreTagsWithoutLabel() : self.ignoreTags;
+
+		return $(this).is(ignoreTags) || isHiddenChoiceLegend(this) || $(this).is("sup") || float == "right" || position == "fixed";
+	}
+
+	var ignoreTagsWithoutLabel = {source: null,
+																															value: null};
+
+	function getIgnoreTagsWithoutLabel()
+	{
+		if (ignoreTagsWithoutLabel.source != self.ignoreTags)
+		{
+			ignoreTagsWithoutLabel.source = self.ignoreTags;
+			ignoreTagsWithoutLabel.value = self.ignoreTags.split(",")
+				.map(function(item)
+				{
+					return item.trim();
+				})
+				.filter(function(item)
+				{
+					return item != "label";
+				})
+				.join(", ");
+		}
+
+		return ignoreTagsWithoutLabel.value;
+	}
+
+	function isChoiceLabel(elem)
+	{
+		if (!$(elem).is("label")) return false;
+		if ($(elem).find("input[type=radio], input[type=checkbox]").length) return true;
+		var forId = $(elem).attr("for");
+		if (!forId) return false;
+		var bound = elem.ownerDocument && elem.ownerDocument.getElementById(forId);
+
+		return Boolean(bound) && $(bound).is("input[type=radio], input[type=checkbox]");
+	}
+
+	function isChoiceFieldset(elem)
+	{
+		return $(elem).is("fieldset") && $(elem).find("input[type=radio], input[type=checkbox]").length > 0;
+	}
+
+	// Screen-reader-only legends inside a choice fieldset (the clip or offscreen
+	// absolute positioning patterns) duplicate what the numbered choices already
+	// convey, so they are excluded from the read text.
+	function isHiddenChoiceLegend(elem)
+	{
+		if (!$(elem).is("legend")) return false;
+		if (!isChoiceFieldset($(elem).closest("fieldset").get(0))) return false;
+
+		return isScreenReaderOnly(elem);
+	}
+
+	function isScreenReaderOnly(elem)
+	{
+		var position = $(elem).css("position");
+		if (position != "absolute" && position != "fixed") return false;
+		var clip = $(elem).css("clip");
+		if (clip && clip != "auto") return true;
+		var clipPath = $(elem).css("clip-path");
+		if (clipPath && clipPath != "none") return true;
+
+		return elem.offsetWidth <= 1 && elem.offsetHeight <= 1;
 	}
 
 	function getText(elem) 

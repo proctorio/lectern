@@ -428,3 +428,19 @@ describe("web speech utterance options", () =>
 		expect(utter.volume).toBe(0.5);
 	});
 });
+
+describe("exam-safe voice selection", () =>
+{
+	it("never selects a remote voice while exam-safe mode is on, even a pinned one", async() =>
+	{
+		seedVoices();
+		await updateSettings({ examSafeMode: true });
+
+		const pinned = await getSpeechVoice("Remote English", "en-GB");
+		expect(pinned).toBeDefined();
+		expect(pinned.remote).toBe(false);
+
+		const auto = await getSpeechVoice(null, "en-US");
+		expect(auto.remote).toBe(false);
+	});
+});

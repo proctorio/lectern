@@ -65,6 +65,15 @@
   "options_about_heading": {
     "message": "About"
   },
+  "options_exam_heading": {
+    "message": "Exam mode"
+  },
+  "options_exam_safe_label": {
+    "message": "Exam-safe mode"
+  },
+  "options_exam_safe_description": {
+    "message": "Reads only the active tab, never opens new windows, and keeps exam overlay announcements on."
+  },
   "context_read_selection": {
     "message": "Read selection aloud"
   },
@@ -76,6 +85,9 @@
   },
   "error_page_unreadable": {
     "message": "Lectern cannot read this website"
+  },
+  "error_exam_safe_tab": {
+    "message": "Exam mode is on. Lectern reads only the active tab."
   },
   "error_file_access": {
     "message": "You need to grant Lectern access to file URLs in extension [settings](open-extension-settings)"

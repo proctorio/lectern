@@ -1,6 +1,7 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke } from "./defaults.js";
+import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke, effectiveShowHighlighting } from "./defaults.js";
+import { splitChunkIntoParagraphs } from "./paragraphs.js";
 import { registerMessageListener } from "./messaging.js";
 
 var queryString = getQueryString();
@@ -19,13 +20,15 @@ $(function()
 	else getCurrentTab().then(function(currentTab) { return updateSettings({sourceTabId: currentTab.id}); });
 });
 
-getSettings(["showHighlighting", "sourceTabId"]).then(async settings => 
+getSettings(["showHighlighting", "sourceTabId", "examSafeMode"]).then(async settings =>
 {
-	if (settings.showHighlighting == 2 && queryString.isPopup) 
+	// Exam-safe mode never opens windows, so the popout path is skipped and
+	// highlighting stays in the popup (milestone M5).
+	if (effectiveShowHighlighting(settings.showHighlighting, settings.examSafeMode) == 2 && queryString.isPopup)
 	{
 		await popout(settings.sourceTabId);
 	}
-	else 
+	else
 	{
 		await init();
 	}
@@ -120,7 +123,7 @@ async function updateButtons()
 		getSettings(),
 		bgPageInvoke("getPlaybackState")
 	]);
-	const showHighlighting = settings.showHighlighting != null ? Number(settings.showHighlighting) : defaults.showHighlighting;
+	const showHighlighting = effectiveShowHighlighting(settings.showHighlighting, settings.examSafeMode);
 	var state = stateInfo.state;
 	const speech = stateInfo.speechInfo;
 	var playbackErr = stateInfo.playbackError;
@@ -145,63 +148,67 @@ async function updateButtons()
 	}
 }
 
-function updateHighlighting(speech) 
+function updateHighlighting(speech)
 {
 	var elem = $("#highlight");
 	if (!elem.data("texts") ||
     elem.data("texts").length != speech.texts.length ||
     elem.data("texts").some((text, i) => text != speech.texts[i])
-	) 
+	)
 	{
 		elem.css("direction", speech.isRTL ? "rtl" : "")
 			.data({texts: speech.texts,
 										position: null})
 			.empty();
-		for (let i = 0; i < speech.texts.length; i++) 
+
+		// One clickable span per PARAGRAPH, not per TTS chunk: chunks may
+		// merge several short paragraphs, and clicking the second paragraph
+		// of a merged chunk must not seek to the chunk start. Each span maps
+		// to its chunk index plus the paragraph's character offset within
+		// that chunk, and the seek path slices playback at the nearest
+		// sentence boundary at or before that offset.
+		for (const entry of mapParagraphs(speech.texts))
 		{
-			makeSpan(speech.texts[i])
+			makeSpan(entry.text)
 				.css("cursor", "pointer")
-				.click(onSeek.bind(null, i))
+				.data("chunkIndex", entry.chunkIndex)
+				.click(onSeek.bind(null, entry.chunkIndex, entry.offset))
 				.appendTo(elem);
 		}
 	}
 
 	const pos = speech.position;
-	if (!elem.data("position") || positionDiffers(elem.data("position"), pos)) 
+	if (!elem.data("position") || positionDiffers(elem.data("position"), pos))
 	{
 		elem.data("position", pos);
 		elem.find(".active").removeClass("active");
-		const child = elem.children().eq(pos.index);
-		const section = pos.word;
-		if (section) 
+
+		// Playback position is chunk-granular (the whole chunk is one
+		// utterance), so every paragraph span of the active chunk highlights,
+		// which matches the old one-span-per-chunk visual exactly.
+		const group = elem.children().filter(function()
 		{
-			child.empty();
-			const text = speech.texts[pos.index];
-			let span;
-			if (section.startIndex > 0) 
-			{
-				makeSpan(text.slice(0, section.startIndex))
-					.appendTo(child);
-			}
-			if (section.endIndex > section.startIndex) 
-			{
-				span = makeSpan(text.slice(section.startIndex, section.endIndex))
-					.addClass("active")
-					.appendTo(child);
-			}
-			if (text.length > section.endIndex) 
-			{
-				makeSpan(text.slice(section.endIndex))
-					.appendTo(child);
-			}
-			if (span) scrollIntoView(span, elem);
-		}
-		else 
+			return $(this).data("chunkIndex") == pos.index;
+		});
+		group.addClass("active");
+		if (group.length) scrollIntoView(group.first(), elem);
+	}
+}
+
+function mapParagraphs(texts)
+{
+	const entries = [];
+	for (let i = 0; i < texts.length; i++)
+	{
+		for (const paragraph of splitChunkIntoParagraphs(texts[i]))
 		{
-			child.addClass("active");
-			scrollIntoView(child, elem);
+			entries.push({text: paragraph.text,
+																	chunkIndex: i,
+																	offset: paragraph.offset});
 		}
 	}
+
+	return entries;
 }
 
 function makeSpan(text) 
@@ -296,9 +303,10 @@ function onRewind()
 		.catch(handleError);
 }
 
-function onSeek(n) 
+function onSeek(n, offset)
 {
-	bgPageInvoke("seek", [n])
+	bgPageInvoke("seek", [n, offset])
+		.then(updateButtons)
 		.catch(handleError);
 }
 

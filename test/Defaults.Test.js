@@ -9,6 +9,7 @@ import * as rxjs from "../src/js/vendor/rxjs.js";
 import { FakeAudio } from "./mocks/speech_synthesis.mock.js";
 import {
 	assert,
+	assertExamSafeTabAllowed,
 	bgPageInvoke,
 	config,
 	createTab,
@@ -16,6 +17,7 @@ import {
 	defaults,
 	detectTabLanguage,
 	domReady,
+	effectiveShowHighlighting,
 	escapeHtml,
 	escapeXml,
 	extraAction,
@@ -904,6 +906,60 @@ describe("silence track", () =>
 		{
 			vi.stubGlobal("Audio", FakeAudio);
 		}
+	});
+});
+
+describe("exam-safe mode", () =>
+{
+	it("defaults examSafeMode to false and includes it in the settings lists", async() =>
+	{
+		expect(defaults.examSafeMode).toBe(false);
+		await updateSettings({ examSafeMode: true });
+		expect((await getSettings()).examSafeMode).toBe(true);
+		await clearSettings();
+		expect(typeof await getSetting("examSafeMode")).toBe("undefined");
+	});
+
+	it("assertExamSafeTabAllowed allows any tab while the mode is off", async() =>
+	{
+		await expect(assertExamSafeTabAllowed({ id: 42 })).resolves.toBeUndefined();
+	});
+
+	it("assertExamSafeTabAllowed allows the active tab while the mode is on", async() =>
+	{
+		await updateSetting("examSafeMode", true);
+		await expect(assertExamSafeTabAllowed({ id: 1 })).resolves.toBeUndefined();
+	});
+
+	it("assertExamSafeTabAllowed refuses a non-active tab while the mode is on", async() =>
+	{
+		await updateSetting("examSafeMode", true);
+		chrome.tabs.__tabs.push({ id: 42,
+																												url: "https://other.example/",
+																												active: false });
+		await expect(assertExamSafeTabAllowed({ id: 42 })).rejects.toThrow("error_exam_safe_tab");
+	});
+
+	it("assertExamSafeTabAllowed refuses when no tab or no active tab exists", async() =>
+	{
+		await updateSetting("examSafeMode", true);
+		await expect(assertExamSafeTabAllowed(null)).rejects.toThrow("error_exam_safe_tab");
+		chrome.tabs.__tabs.length = 0;
+		await expect(assertExamSafeTabAllowed({ id: 1 })).rejects.toThrow("error_exam_safe_tab");
+	});
+
+	it("effectiveShowHighlighting collapses the window surface to the popup in exam-safe mode", () =>
+	{
+		expect(effectiveShowHighlighting(2, true)).toBe(1);
+		expect(effectiveShowHighlighting("2", true)).toBe(1);
+	});
+
+	it("effectiveShowHighlighting passes other values through unchanged", () =>
+	{
+		expect(effectiveShowHighlighting(2, false)).toBe(2);
+		expect(effectiveShowHighlighting(0, true)).toBe(0);
+		expect(effectiveShowHighlighting(1, true)).toBe(1);
+		expect(effectiveShowHighlighting(null, true)).toBe(defaults.showHighlighting);
 	});
 });
 

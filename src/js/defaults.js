@@ -23,6 +23,13 @@ export var config = {
 		"chrome:",
 		"about:"
 	],
+
+	// F6 overlay auto-announce (milestone M5): the CSS selector identifying
+	// the proctoring intervention overlay in exam-safe mode. Ships empty,
+	// which keeps detection disabled, until decision D15 (owner plus the
+	// extension team) fixes the overlay DOM contract. Until D15 lands, tests
+	// may override the selector through the examOverlaySelector storage key.
+	EXAM_OVERLAY_SELECTOR: "",
 	browserId: getBrowser()
 };
 
@@ -32,7 +39,8 @@ export var defaults = {
 	volume: 1.0,
 	showHighlighting: 1,
 	highlightFontSize: 3,
-	highlightWindowSize: 2
+	highlightWindowSize: 2,
+	examSafeMode: false
 };
 
 export var getSilenceTrack = lazy(() => makeSilenceTrack());
@@ -108,7 +116,7 @@ export function getSettings(names)
 {
 	return new Promise(function(fulfill) 
 	{
-		brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
+		brapi.storage.local.get(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode", "examSafeMode"], fulfill);
 	});
 }
 
@@ -124,7 +132,7 @@ export function clearSettings(names)
 {
 	return new Promise(function(fulfill) 
 	{
-		brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode"], fulfill);
+		brapi.storage.local.remove(names || ["voiceName", "rate", "pitch", "volume", "showHighlighting", "languages", "highlightFontSize", "highlightWindowSize", "preferredVoices", "fixBtSilenceGap", "darkMode", "examSafeMode"], fulfill);
 	});
 }
 
@@ -278,11 +286,41 @@ export function getActiveTab()
 	});
 }
 
-export function getCurrentTab() 
+/**
+ * EXAM-SAFE MODE (milestone M5)
+ */
+
+// When exam-safe mode is on, Lectern reads the active tab only. playTab
+// already targets the active tab by default; this guard enforces the
+// constraint for every caller that passes an explicit tab, so no future
+// caller can bypass it.
+export async function assertExamSafeTabAllowed(tab)
 {
-	return new Promise(function(fulfill, reject) 
+	if (!await getSetting("examSafeMode")) return;
+	const activeTab = await getActiveTab();
+	if (!tab || !activeTab || tab.id != activeTab.id)
 	{
-		brapi.tabs.getCurrent(function(tab) 
+		throw new Error(JSON.stringify({code: "error_exam_safe_tab"}));
+	}
+}
+
+// The window highlighting surface (showHighlighting 2) opens a popout
+// window, which exam-safe mode forbids, so it collapses to the popup (1)
+// while the mode is on. Every consumer of showHighlighting goes through
+// this so the stored preference survives the mode being toggled off.
+export function effectiveShowHighlighting(showHighlighting, examSafeMode)
+{
+	const value = showHighlighting != null ? Number(showHighlighting) : defaults.showHighlighting;
+	if (examSafeMode && value == 2) return 1;
+
+	return value;
+}
+
+export function getCurrentTab()
+{
+	return new Promise(function(fulfill, reject)
+	{
+		brapi.tabs.getCurrent(function(tab)
 		{
 			if (tab) fulfill(tab);
 			else reject(brapi.runtime.lastError || new Error("Could not get current tab"));

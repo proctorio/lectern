@@ -12,6 +12,11 @@ export const voices$ = rxjs.defer(() => browserTtsEngine.getVoices()).pipe(rxjs.
 export async function getSpeechVoice(voiceName, lang) 
 {
 	let voices = await rxjs.firstValueFrom(voices$);
+
+	// exam-safe mode never selects a network voice, even a pinned one: the
+	// browser can expose remote voices (for example Google network voices)
+	// through chrome.tts, and reading exam text must stay on-device
+	if (await getSetting("examSafeMode")) voices = voices.filter(v => !v.remote);
 	var voice;
 
 	// if a specific voice is indicated

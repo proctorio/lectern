@@ -1,6 +1,6 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke } from "./defaults.js";
+import { defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke, effectiveShowHighlighting } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 import { voices$ } from "./tts-engines.js";
 
@@ -163,17 +163,43 @@ import { voices$ } from "./tts-engines.js";
 
 	// showHighlighting
 	domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
 			$("#show-highlighting")
-				.change(function() 
+				.change(function()
 				{
 					updateSettings({showHighlighting: $(this).val()});
 				});
 		});
 
-	rxjs.combineLatest([observeSetting("showHighlighting"), domReadyPromise])
-		.subscribe(([showHighlighting]) => $("#show-highlighting").val(showHighlighting || defaults.showHighlighting));
+	// The displayed value collapses the window choice to the popup while
+	// exam-safe mode is on (milestone M5); the stored preference is kept.
+	rxjs.combineLatest([observeSetting("showHighlighting"), observeSetting("examSafeMode"), domReadyPromise])
+		.subscribe(([showHighlighting, examSafeMode]) => $("#show-highlighting").val(effectiveShowHighlighting(showHighlighting || defaults.showHighlighting, examSafeMode)));
+
+	// exam-safe mode (milestone M5): reads the active tab only, never opens
+	// windows, and keeps overlay announcements on.
+	domReadyPromise
+		.then(() =>
+		{
+			$("#exam-safe-mode")
+				.change(function()
+				{
+					updateSettings({examSafeMode: this.checked});
+				});
+		});
+
+	rxjs.combineLatest([observeSetting("examSafeMode"), domReadyPromise])
+		.subscribe(([examSafeMode]) =>
+		{
+			$("#exam-safe-mode").prop("checked", Boolean(examSafeMode));
+
+			// The window highlighting surface opens a popout window, which
+			// exam-safe mode forbids; hide the choice while the mode is on.
+			$("#show-highlighting option[value='2']")
+				.prop("disabled", Boolean(examSafeMode))
+				.toggle(!examSafeMode);
+		});
 
 	// voiceTest
 	const demoSpeech = {

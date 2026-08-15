@@ -6,6 +6,7 @@
  */
 import { vi } from "vitest";
 import { Speech } from "../src/js/speech.js";
+import { splitChunkIntoParagraphs } from "../src/js/paragraphs.js";
 
 /**
  * @description Builds a Speech with sane defaults for a plain local voice.
@@ -194,6 +195,72 @@ describe("playback", () =>
 
 		expect(speech.canForward()).toBe(true);
 		expect(speech.canRewind()).toBe(false);
+	});
+});
+
+describe("seek with offset", () =>
+{
+	it("starts playback at a paragraph boundary inside a merged chunk", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["First short paragraph.", "Second short paragraph."]);
+		const chunk = speech.getInfo().texts[0];
+		expect(speech.getInfo().texts).toHaveLength(1);
+
+		speech.seek(0, chunk.indexOf("Second"));
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe("Second short paragraph.");
+		expect(speech.getInfo().position.index).toBe(0);
+	});
+
+	it("accepts offsets computed by the popup paragraph mapping", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["Opening paragraph text.", "Closing paragraph text."]);
+		const chunk = speech.getInfo().texts[0];
+		const paragraphs = splitChunkIntoParagraphs(chunk);
+		expect(paragraphs).toHaveLength(2);
+
+		speech.seek(0, paragraphs[1].offset);
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe("Closing paragraph text.");
+	});
+
+	it("snaps a mid-sentence offset back to the sentence start", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["Alpha alpha alpha. Beta beta beta."]);
+		const chunk = speech.getInfo().texts[0];
+
+		speech.seek(0, chunk.indexOf("beta"));
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe("Beta beta beta.");
+	});
+
+	it("plays the whole chunk when the offset is zero or missing", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["First short paragraph.", "Second short paragraph."]);
+		const chunk = speech.getInfo().texts[0];
+
+		speech.seek(0, 0);
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe(chunk);
+	});
+
+	it("clamps an offset past the end of the chunk to its last sentence", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["Alpha alpha alpha. Beta beta beta."]);
+
+		speech.seek(0, 10000);
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe("Beta beta beta.");
 	});
 });
 

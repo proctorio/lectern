@@ -6,6 +6,9 @@ export function Speech(texts, options)
 {
 	options.rate = (options.rate || 1) * (isGoogleNative(options.voice) ? 0.9 : 1);
 
+	const isEastAsian = (/^zh|ko|ja/).test(options.lang);
+	const punctuator = isEastAsian ? new EastAsianPunctuator() : new LatinPunctuator();
+
 	for (var i = 0; i < texts.length; i++) if ((/[\w)]$/).test(texts[i])) texts[i] += ".";
 	if (texts.length) texts = getChunks(texts.join("\n\n"));
 
@@ -25,10 +28,11 @@ export function Speech(texts, options)
 																																	delay: 750});
 	this.rewind = () => cmd$.next({name: "rewind",
 																																delay: 750});
-	this.seek = index => 
+	this.seek = (index, offset) =>
 	{
 		cmd$.next({name: "seek",
-													index});
+													index,
+													offset});
 		playbackState$.next("resumed");
 	};
 	this.gotoEnd = () => cmd$.next({name: "gotoEnd"});
@@ -40,20 +44,51 @@ export function Speech(texts, options)
 		return browserTtsEngine;
 	}
 
-	function getChunks(text) 
+	function getChunks(text)
 	{
-		var isEA = (/^zh|ko|ja/).test(options.lang);
-		var punctuator = isEA ? new EastAsianPunctuator() : new LatinPunctuator();
-		if (isGoogleNative(options.voice)) 
+		if (isGoogleNative(options.voice))
 		{
-			var wordLimit = ((/^(de|ru|es|pt|id)/).test(options.lang) ? 32 : 36) * (isEA ? 2 : 1) * options.rate;
-			
+			var wordLimit = ((/^(de|ru|es|pt|id)/).test(options.lang) ? 32 : 36) * (isEastAsian ? 2 : 1) * options.rate;
+
 			return new WordBreaker(wordLimit, punctuator).breakText(text);
 		}
-		else 
+		else
 		{
 			return new CharBreaker(750, punctuator, 200).breakText(text);
 		}
+	}
+
+	// Returns the chunk text to play for a seek: the whole chunk when no
+	// offset is given, otherwise the chunk sliced at the nearest sentence
+	// boundary at or before the offset.
+	function getSeekText(text, offset)
+	{
+		if (!offset) return text;
+		const start = getSentenceStart(text, offset);
+
+		return start > 0 ? text.slice(start) : text;
+	}
+
+	// Finds the start offset of the sentence containing the given character
+	// offset, walking the same paragraph and sentence boundaries the chunker
+	// uses so every boundary maps to a real playback position.
+	function getSentenceStart(text, offset)
+	{
+		var start = 0;
+		var pos = 0;
+		const paragraphs = punctuator.getParagraphs(text);
+		for (var p = 0; p < paragraphs.length; p++)
+		{
+			const sentences = punctuator.getSentences(paragraphs[p]);
+			for (var s = 0; s < sentences.length; s++)
+			{
+				if (pos > offset) return start;
+				start = pos;
+				pos += sentences[s].length;
+			}
+		}
+
+		return start;
 	}
 
 	async function getState() 
@@ -153,10 +188,10 @@ export function Speech(texts, options)
 						
 						return current;
 					}
-					else 
+					else
 					{
-						const playback$ = playlist.seek(cmd.index);
-						
+						const playback$ = playlist.seek(cmd.index, cmd.offset);
+
 						return playback$ ? {playback$,
 																										ts: Date.now()} : current;
 					}
@@ -274,13 +309,13 @@ export function Speech(texts, options)
 					return makePlayback(texts[index]);
 				}
 			},
-			seek(toIndex) 
+			seek(toIndex, offset)
 			{
-				if (toIndex >= 0 && toIndex < texts.length) 
+				if (toIndex >= 0 && toIndex < texts.length)
 				{
 					index = toIndex;
-					
-					return makePlayback(texts[index]);
+
+					return makePlayback(getSeekText(texts[index], offset));
 				}
 			},
 			gotoEnd() 

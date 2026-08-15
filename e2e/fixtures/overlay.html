@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Exam Overlay Fixture</title>
+</head>
+<body>
+  <main>
+    <h1>Practice Reading Passage</h1>
+    <p>
+      This passage exists to keep the reader busy while an exam intervention
+      overlay appears. It contains several sentences so that playback runs
+      long enough for the announcement to interrupt it midway through.
+    </p>
+    <p>
+      A second paragraph continues the passage with more material to read.
+      The proctoring overlay below is appended by script and stays hidden,
+      exactly like an intervention dialog container waiting to be shown.
+    </p>
+    <p>
+      A third paragraph closes the passage. Nothing on this page performs a
+      network request, and the only dynamic behavior is the overlay element
+      added by the inline script after a one second delay.
+    </p>
+  </main>
+  <script>
+    // Simulates a proctoring intervention: a hidden overlay appears one
+    // second after load. The extension's content script (present only once
+    // reading has started) must detect it and announce its text.
+    setTimeout(function () {
+      var overlay = document.createElement("div");
+      overlay.id = "exam-overlay";
+      overlay.style.display = "none";
+      overlay.textContent = "Exam paused by your proctor. Please remain seated and wait for further instructions before continuing with the assessment.";
+      document.body.appendChild(overlay);
+    }, 1000);
+  </script>
+</body>
+</html>

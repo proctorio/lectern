@@ -134,7 +134,8 @@ describe("Doc", () =>
 	it("lets a confident detection override a mismatched declared language", async() =>
 	{
 		seedEnglishVoice();
-		chrome.__config.detectLanguageResult = { languages: [{ language: "fr",
+		chrome.__config.detectLanguageResult = { isReliable: true,
+																																											languages: [{ language: "fr",
 																																																									percentage: 95 }] };
 		const longText = ("bonjour tout le monde ".repeat(20)).trim() + ".";
 		const { doc } = makeDoc([longText], { lang: "en-US" });
@@ -181,6 +182,74 @@ describe("Doc", () =>
 		expect(onEnd).toHaveBeenCalled();
 		expect(chrome.__tts.utterances[0].text).not.toContain("secret.example");
 		expect(chrome.__tts.utterances[0].text).toContain("HTTP URL.");
+	});
+});
+
+describe("language detection confidence bar", () =>
+{
+	const frenchDetection = { isReliable: true,
+																											languages: [{ language: "fr",
+																																									percentage: 95 }] };
+	const longEnglishText = ("hello wonderful world of reading ".repeat(10)).trim() + ".";
+
+	/**
+	 * @description Plays a doc and asserts it completed with the seeded
+	 * English voice, which proves the declared language won.
+	 *
+	 * @param {Array<string>} texts - Source texts.
+	 * @param {string} [lang] - The declared language, omitted when the page
+	 * declares none.
+	 * @return {Promise<void>} - Resolves when playback ended cleanly.
+	 */
+	async function expectDeclaredLanguageWins(texts, lang)
+	{
+		const { doc, onEnd } = makeDoc(texts, { lang });
+		await doc.play();
+		await new Promise(resolve => setTimeout(resolve, 20));
+		expect(onEnd).toHaveBeenCalledWith();
+	}
+
+	it("ignores detection when the sampled text is under 100 chars", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__config.detectLanguageResult = frenchDetection;
+		await expectDeclaredLanguageWins(["short text."], "en-US");
+	});
+
+	it("ignores a detection the browser flags unreliable", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__config.detectLanguageResult = { isReliable: false,
+																																											languages: [{ language: "fr",
+																																																									percentage: 95 }] };
+		await expectDeclaredLanguageWins([longEnglishText], "en-US");
+	});
+
+	it("ignores a reliable detection whose top percentage is low", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__config.detectLanguageResult = { isReliable: true,
+																																											languages: [{ language: "fr",
+																																																									percentage: 60 }] };
+		await expectDeclaredLanguageWins([longEnglishText], "en-US");
+	});
+
+	it("uses a reliable, dominant detection when no language is declared", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__config.detectLanguageResult = frenchDetection;
+		const longText = ("bonjour tout le monde ".repeat(20)).trim() + ".";
+		const { doc } = makeDoc([longText], {});
+
+		await expect(doc.play()).rejects.toThrow(/error_no_voice/u);
+	});
+
+	it("falls back to the default language when nothing is declared or detected", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__config.detectLanguageResult = { isReliable: false,
+																																											languages: [] };
+		await expectDeclaredLanguageWins([longEnglishText]);
 	});
 });
 
@@ -265,6 +334,21 @@ describe("Doc active controls", () =>
 		await new Promise(resolve => setTimeout(resolve, 10));
 
 		expect(chrome.__tts.utterances.at(-1).text).toContain("beta");
+	});
+
+	it("passes a seek offset through to the active speech", async() =>
+	{
+		seedEnglishVoice();
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const made = makeDoc(["First short paragraph.", "Second short paragraph."]);
+		await made.doc.play();
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		const chunk = chrome.__tts.utterances[0].text;
+		await made.doc.seek(0, chunk.indexOf("Second"));
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(chrome.__tts.utterances.at(-1).text).toBe("Second short paragraph.");
 	});
 });
 
