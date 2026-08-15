@@ -6,6 +6,9 @@
 body {
   margin: 0;
   padding: var(--space-16);
+  /* border-box so the explicit width applyPopupWidth (popup.js) sets on
+     html and body IS the popup window width, padding included. */
+  box-sizing: border-box;
   background-color: var(--background-surface-secondary);
   /* The transcript font-size steps popup.js applies to #highlight are em
      values resolved against this base; 20px preserves the established
@@ -175,7 +178,6 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
 }
 
 #status {
-  min-width: 250px;
   font: var(--body-sm-regular);
   color: var(--text-error);
   text-align: center;

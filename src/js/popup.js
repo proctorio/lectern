@@ -387,16 +387,21 @@ function refreshSize()
 		});
 }
 
-// The toolbar popup window follows the body's explicit width: Chrome sizes
-// the popup to the document's intrinsic width, and an explicit body width
-// is the one signal it tracks in both directions, growing and shrinking.
-// While the transcript shows, the body takes the configured window size so
-// the popup matches it; idle, the width clears and the popup collapses to
-// fit the transport row.
+// The toolbar popup window follows an explicit width set on BOTH html and
+// body: Chrome's popup auto-resize only ever grows intrinsic widths (height
+// shrinks fine, width ratchets; verified against a real popup via
+// chrome.action.openPopup), and a definite width on the html element is
+// what releases the ratchet so the window also shrinks. The body is
+// border-box (popup.css), so the window width equals the value set here:
+// the configured window size while the transcript shows, a compact
+// constant when idle.
+var IDLE_POPUP_WIDTH = 250;
+
 function applyPopupWidth(settings)
 {
 	if (!queryString.isPopup || isMobileOS()) return;
-	$("body").css("width", $("#highlight").is(":visible") ? getWindowSize(settings)[0] : "");
+	const width = $("#highlight").is(":visible") ? getWindowSize(settings)[0] : IDLE_POPUP_WIDTH;
+	$("html, body").css("width", width);
 }
 
 function getFontSize(settings)
