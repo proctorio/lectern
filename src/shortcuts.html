@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shortcut Keys</title>
-  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="css/base.css">
   <link rel="stylesheet" type="text/css" href="css/common.css">
   <style>
-  h2 {
+  /* The page heading is an h1 for document structure; it keeps the 2rem
+     size the bootstrap h2 had so the page looks unchanged. */
+  h1 {
+    font-size: 2rem;
     margin-top: 30px;
     margin-bottom: 20px;
   }
@@ -15,10 +18,10 @@
   <script type="module" src="js/defaults.js"></script>
 </head>
 <body>
-  <div class="container">
-  <h2>
+  <main class="container">
+  <h1>
     Shortcut Keys
-  </h2>
+  </h1>
   <table class="table table-bordered table-striped">
     <tr>
       <td>Play/Pause</td>
@@ -37,6 +40,6 @@
       <td>Alt/Option + Comma</td>
     </tr>
   </table>
-  </div>
+  </main>
 </body>
 </html>

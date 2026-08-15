@@ -48,6 +48,45 @@ body {
   display: none;
 }
 
+/* Focus visibility (WCAG 2.2 focus appearance): a thick offset outline that
+   measures at least 3:1 against every surface it can sit on. Light theme
+   #1a73e8 is 4.5:1 on white, 4.3:1 on #f8f9fa, and 4.0:1 on the #ffefd5
+   highlight box; dark theme #8ab4f8 is 7.3:1 on #252525, 6.0:1 on #333,
+   and 5.1:1 on #3e3e3e. */
+:focus-visible {
+  outline: 3px solid #1a73e8;
+  outline-offset: 2px;
+}
+.dark-mode :focus-visible {
+  outline-color: #8ab4f8;
+}
+
+/* Reduced motion (accessibility spec: respect prefers-reduced-motion, no
+   animated progress indicators for users who opted out). Animations and
+   transitions collapse to a single imperceptible frame instead of being
+   removed, so animation/transition end events still fire for any code
+   listening for them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Forced colors / OS high contrast (accessibility spec: respect
+   prefers-contrast and OS high contrast mode). System color keywords track
+   whatever palette the user chose; hardcoded hex values do not. */
+@media (forced-colors: active) {
+  :focus-visible,
+  .dark-mode :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
 .link {
   color: blue;
   text-decoration: underline;
@@ -56,4 +95,19 @@ body {
 
 .text-pre-wrap {
   white-space: pre-wrap;
+}
+
+/* Screen-reader-only content: rendered in the accessibility tree but
+   removed from the visual layout (the standard clip pattern). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

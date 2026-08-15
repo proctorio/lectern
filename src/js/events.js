@@ -143,6 +143,7 @@ if (brapi.commands)
 					switch (stateInfo.state) 
 					{
 						case "PLAYING": return command == "pause" ? pause() : stopAndTeardown();
+						case "LOADING": return stopAndTeardown();
 						case "PAUSED": return resume();
 						case "STOPPED": return playTab();
 					}
@@ -422,6 +423,8 @@ function createPlayerFrame()
 	frame.style.position = "absolute";
 	frame.style.height = "0";
 	frame.style.borderWidth = "0";
+	frame.title = "Lectern Player";
+	frame.setAttribute("aria-hidden", "true");
 	document.body.appendChild(frame);
 }
 

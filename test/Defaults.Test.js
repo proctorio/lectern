@@ -38,6 +38,7 @@ import {
 	getVoiceLanguages,
 	groupVoicesByLang,
 	immediate,
+	isActivationKey,
 	isChromeOSNative,
 	isGoogleNative,
 	isMacOSNative,
@@ -49,6 +50,7 @@ import {
 	observeSetting,
 	parseLang,
 	parseQueryString,
+	playbackAnnouncementKey,
 	promiseTimeout,
 	repeat,
 	removeAllAttrs,
@@ -820,6 +822,12 @@ describe("DOM helpers with a minimal jQuery stand-in", () =>
 				elements[0].textContent = value;
 
 				return this;
+			},
+			attr(name, value)
+			{
+				elements[0].setAttribute(name, value);
+
+				return this;
 			}
 		};
 	}
@@ -845,6 +853,56 @@ describe("DOM helpers with a minimal jQuery stand-in", () =>
 		setI18nText();
 		expect(document.querySelector("span").textContent).toBe("hello_key");
 		expect(document.querySelector("input").value).toBe("input_key");
+	});
+
+	it("setI18nText sets aria-label on icon-only controls from data-i18n-label", () =>
+	{
+		document.body.innerHTML = "<button data-i18n-label=\"stop_key\">stop</button>";
+		setI18nText();
+		expect(document.querySelector("button").getAttribute("aria-label")).toBe("stop_key");
+	});
+});
+
+describe("isActivationKey", () =>
+{
+	it("accepts Enter, Space, and the legacy Spacebar name", () =>
+	{
+		expect(isActivationKey("Enter")).toBe(true);
+		expect(isActivationKey(" ")).toBe(true);
+		expect(isActivationKey("Spacebar")).toBe(true);
+	});
+
+	it("rejects other keys", () =>
+	{
+		expect(isActivationKey("Escape")).toBe(false);
+		expect(isActivationKey("a")).toBe(false);
+		expect(isActivationKey("Tab")).toBe(false);
+	});
+});
+
+describe("playbackAnnouncementKey", () =>
+{
+	it("maps each state transition to its status message key", () =>
+	{
+		expect(playbackAnnouncementKey("STOPPED", "LOADING")).toBe("popup_status_loading");
+		expect(playbackAnnouncementKey("LOADING", "PLAYING")).toBe("popup_status_playing");
+		expect(playbackAnnouncementKey("PLAYING", "PAUSED")).toBe("popup_status_paused");
+		expect(playbackAnnouncementKey("PAUSED", "STOPPED")).toBe("popup_status_stopped");
+	});
+
+	it("stays silent on the first observed state", () =>
+	{
+		expect(playbackAnnouncementKey(null, "PLAYING")).toBeNull();
+	});
+
+	it("stays silent when the state has not changed between polls", () =>
+	{
+		expect(playbackAnnouncementKey("PLAYING", "PLAYING")).toBeNull();
+	});
+
+	it("stays silent for an unknown state", () =>
+	{
+		expect(playbackAnnouncementKey("PLAYING", "REWINDING")).toBeNull();
 	});
 });
 

@@ -1,6 +1,6 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke, effectiveShowHighlighting } from "./defaults.js";
+import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke, effectiveShowHighlighting, setI18nText, playbackAnnouncementKey, isActivationKey } from "./defaults.js";
 import { splitChunkIntoParagraphs } from "./paragraphs.js";
 import { registerMessageListener } from "./messaging.js";
 
@@ -59,10 +59,11 @@ async function popout(tabId)
 	}
 }
 
-async function init() 
+async function init()
 {
 	await domReady();
 
+	setI18nText();
 	$("#btnPlay").click(onPlay);
 	$("#btnPause").click(onPause);
 	$("#btnStop").click(onStop);
@@ -117,7 +118,11 @@ function handleError(err)
 
 rxjs.concat(domReady(), rxjs.interval(500)).subscribe(updateButtons);
 
-async function updateButtons() 
+// The last playback state the poll observed, so the live region announces
+// transitions only, never every poll tick.
+var lastPlaybackState = null;
+
+async function updateButtons()
 {
 	const [settings, stateInfo] = await Promise.all([
 		getSettings(),
@@ -130,9 +135,20 @@ async function updateButtons()
 
 	if (playbackErr) handleError(playbackErr);
 
+	const announcementKey = playbackAnnouncementKey(lastPlaybackState, state);
+	lastPlaybackState = state;
+	if (announcementKey) $("#playback-status").text(brapi.i18n.getMessage(announcementKey));
+
 	$("#imgLoading").toggle(state == "LOADING");
 	$("#btnSettings").toggle(state == "STOPPED");
 	$("#btnPlay").toggle(state == "PAUSED" || state == "STOPPED");
+
+	// The play button resumes while paused, so its accessible name must
+	// track that behavior change (accessibility spec: do not label a button
+	// "play" and change its behavior to pause/resume without changing the
+	// accessible name). Only write the attribute when it actually changes.
+	const playLabel = brapi.i18n.getMessage(state == "PAUSED" ? "popup_resume_label" : "popup_play_label");
+	if ($("#btnPlay").attr("aria-label") != playLabel) $("#btnPlay").attr("aria-label", playLabel);
 	$("#btnPause").toggle(state == "PLAYING");
 	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
 	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED");
@@ -166,13 +182,31 @@ function updateHighlighting(speech)
 		// of a merged chunk must not seek to the chunk start. Each span maps
 		// to its chunk index plus the paragraph's character offset within
 		// that chunk, and the seek path slices playback at the nearest
-		// sentence boundary at or before that offset.
+		// sentence boundary at or before that offset. The spans are keyboard
+		// actionable (role=button, tabindex, Enter and Space reusing the
+		// click path) per the accessibility spec's keyboard-only requirement.
+		let paragraphNumber = 0;
 		for (const entry of mapParagraphs(speech.texts))
 		{
+			paragraphNumber++;
+			const seek = onSeek.bind(null, entry.chunkIndex, entry.offset);
 			makeSpan(entry.text)
 				.css("cursor", "pointer")
 				.data("chunkIndex", entry.chunkIndex)
-				.click(onSeek.bind(null, entry.chunkIndex, entry.offset))
+				.attr({
+					role: "button",
+					tabindex: 0,
+					title: brapi.i18n.getMessage("popup_read_paragraph_label", [String(paragraphNumber)])
+				})
+				.click(seek)
+				.on("keydown", function(event)
+				{
+					if (isActivationKey(event.key))
+					{
+						event.preventDefault();
+						seek();
+					}
+				})
 				.appendTo(elem);
 		}
 	}
@@ -181,16 +215,18 @@ function updateHighlighting(speech)
 	if (!elem.data("position") || positionDiffers(elem.data("position"), pos))
 	{
 		elem.data("position", pos);
-		elem.find(".active").removeClass("active");
+		elem.find(".active").removeClass("active").removeAttr("aria-current");
 
 		// Playback position is chunk-granular (the whole chunk is one
 		// utterance), so every paragraph span of the active chunk highlights,
-		// which matches the old one-span-per-chunk visual exactly.
+		// which matches the old one-span-per-chunk visual exactly. The
+		// active group also carries aria-current plus a border in CSS, so
+		// the playing position is never conveyed by color alone.
 		const group = elem.children().filter(function()
 		{
 			return $(this).data("chunkIndex") == pos.index;
 		});
-		group.addClass("active");
+		group.addClass("active").attr("aria-current", "true");
 		if (group.length) scrollIntoView(group.first(), elem);
 	}
 }
@@ -239,7 +275,9 @@ function scrollIntoView(child, scrollParent)
 	const childTop = child.offset().top - scrollParent.offset().top;
 	const childBottom = childTop + child.outerHeight();
 	if (childTop < 0 || childBottom >= scrollParent.height())
-		scrollParent.animate({scrollTop: scrollParent[0].scrollTop + childTop - 10});
+		var target = scrollParent[0].scrollTop + childTop - 10;
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) scrollParent[0].scrollTop = target;
+	else scrollParent.animate({scrollTop: target});
 }
 
 var currentPlayRequestId;

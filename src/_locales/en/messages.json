@@ -74,6 +74,74 @@
   "options_exam_safe_description": {
     "message": "Reads only the active tab, never opens new windows, and keeps exam overlay announcements on."
   },
+  "options_close_label": {
+    "message": "Close"
+  },
+  "options_expand_label": {
+    "message": "Open advanced options"
+  },
+  "options_languages_edit_label": {
+    "message": "Filter voices by language"
+  },
+  "options_rate_edit_label": {
+    "message": "Enter exact speed"
+  },
+  "popup_rewind_label": {
+    "message": "Rewind"
+  },
+  "popup_play_label": {
+    "message": "Play"
+  },
+  "popup_resume_label": {
+    "message": "Resume"
+  },
+  "popup_pause_label": {
+    "message": "Pause"
+  },
+  "popup_stop_label": {
+    "message": "Stop"
+  },
+  "popup_settings_label": {
+    "message": "Settings"
+  },
+  "popup_forward_label": {
+    "message": "Forward"
+  },
+  "popup_decrease_font_label": {
+    "message": "Decrease text size"
+  },
+  "popup_increase_font_label": {
+    "message": "Increase text size"
+  },
+  "popup_dark_mode_label": {
+    "message": "Toggle dark mode"
+  },
+  "popup_decrease_window_label": {
+    "message": "Decrease window size"
+  },
+  "popup_increase_window_label": {
+    "message": "Increase window size"
+  },
+  "popup_status_playing": {
+    "message": "Playing"
+  },
+  "popup_status_paused": {
+    "message": "Paused"
+  },
+  "popup_status_stopped": {
+    "message": "Stopped"
+  },
+  "popup_status_loading": {
+    "message": "Loading"
+  },
+  "popup_read_paragraph_label": {
+    "message": "Read from paragraph $NUM$",
+    "placeholders": {
+      "num": {
+        "content": "$1"
+      }
+    }
+  },
   "context_read_selection": {
     "message": "Read selection aloud"
   },

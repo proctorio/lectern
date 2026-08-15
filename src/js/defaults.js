@@ -502,14 +502,59 @@ export function domReady()
 	});
 }
 
-export function setI18nText() 
+/**
+ * @description Tells whether a keyboard key activates a role=button control,
+ * matching native button behavior (Enter and Space). "Spacebar" is the
+ * legacy IE/older-WebKit name kept for safety.
+ *
+ * @param {string} key - The KeyboardEvent.key value.
+ * @return {boolean} - True when the key should trigger the control.
+ */
+export function isActivationKey(key)
 {
-	$("[data-i18n]").each(function() 
+	return key == "Enter" || key == " " || key == "Spacebar";
+}
+
+/**
+ * @description Picks the i18n key to announce for a playback state transition.
+ * The popup's single polite live region (accessibility spec rule 3) must
+ * announce state CHANGES only: the first observed state and repeated polls
+ * of an unchanged state produce no announcement.
+ *
+ * @param {?string} previousState - The last observed state, or null before the first poll.
+ * @param {string} state - The newly observed playback state.
+ * @return {?string} - The message key to announce, or null for silence.
+ */
+export function playbackAnnouncementKey(previousState, state)
+{
+	const keys = {
+		PLAYING: "popup_status_playing",
+		PAUSED: "popup_status_paused",
+		STOPPED: "popup_status_stopped",
+		LOADING: "popup_status_loading"
+	};
+	if (!previousState || previousState == state) return null;
+
+	return keys[state] || null;
+}
+
+export function setI18nText()
+{
+	$("[data-i18n]").each(function()
 	{
 		var key = $(this).data("i18n");
 		var text = brapi.i18n.getMessage(key);
 		if ($(this).is("input")) $(this).val(text);
 		else $(this).text(text);
+	});
+
+	// Icon-only controls carry their accessible name in data-i18n-label so
+	// the visible icon glyph is never the announced name (accessibility
+	// spec: all controls have accessible names, icon-only buttons get
+	// aria-label).
+	$("[data-i18n-label]").each(function()
+	{
+		$(this).attr("aria-label", brapi.i18n.getMessage($(this).data("i18nLabel")));
 	});
 }
 

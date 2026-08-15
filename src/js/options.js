@@ -41,10 +41,16 @@ import { voices$ } from "./tts-engines.js";
 	domReadyPromise
 		.then(() => 
 		{
-			$("#hotkeys-link").click(function() 
-			{
-				brapi.tabs.create({url: getHotkeySettingsUrl()});
-			});
+			$("#hotkeys-link")
+				.click(function()
+				{
+					brapi.tabs.create({url: getHotkeySettingsUrl()});
+				})
+				.on("keydown", function(event)
+				{
+					// Links activate on Enter only; the click path is reused.
+					if (event.key == "Enter") $(this).click();
+				});
 		});
 
 	// voice
@@ -95,6 +101,10 @@ import { voices$ } from "./tts-engines.js";
 				{
 					const rate = Math.pow($("#rate").data("pow"), value);
 					updateSetting("rate" + $("#voices").val(), Number(rate.toFixed(3)));
+				},
+				formatValue(value) 
+				{
+					return Math.pow($("#rate").data("pow"), value).toFixed(2) + "x";
 				}
 			});
 			$("#rate-edit-button")
@@ -361,7 +371,15 @@ import { voices$ } from "./tts-engines.js";
 
 	function showConfirmation() 
 	{
-		$(".green-check").finish().show().delay(500).fadeOut();
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+		{
+			$(".green-check").finish().show();
+			setTimeout(function() { $(".green-check").hide(); }, 1000);
+		}
+		else
+		{
+			$(".green-check").finish().show().delay(500).fadeOut();
+		}
 	}
 
 	function handleError(err) 
@@ -377,101 +395,49 @@ import { voices$ } from "./tts-engines.js";
 		}
 	}
 
-	function createSlider(elem, {onChange, onSlideChange}) 
+	function createSlider(elem, {onChange, onSlideChange, formatValue}) 
 	{
+		// A native range input provides the slider role, keyboard operation,
+		// and forced-colors rendering for free. Positions are integer steps;
+		// aria-valuetext carries the effective value so assistive tech never
+		// hears the raw step number.
 		var min = $(elem).data("min") || 0;
 		var max = $(elem).data("max") || 1;
-		var step = 1 / ($(elem).data("steps") || 20);
-		var $bg = $(elem).empty().toggleClass("slider", true);
-		var $bar = $("<div class='bar'>").appendTo(elem);
-		var $track = $("<div class='track'>").appendTo(elem);
-		var $knob = $("<div class='knob'>").appendTo($track);
+		var steps = $(elem).data("steps") || 20;
+		var format = formatValue || function(value) { return String(Math.round(value * 100) / 100); };
+		var $input = $("<input type='range'>")
+			.attr({min: 0,
+										max: steps,
+										step: 1});
+		var labelId = $(elem).data("label");
+		if (labelId) $input.attr("aria-labelledby", labelId);
+		$(elem).empty().toggleClass("slider", true).append($input);
 
-		$bg.click(function(e) 
+		$input.on("input", function() 
 		{
-			var pos = calcPosition(e);
-			setPosition(pos);
-			onChange(min + pos * (max - min));
+			var value = toValue(Number(this.value));
+			$input.attr("aria-valuetext", format(value));
+			if (onSlideChange) onSlideChange(value);
 		});
-		$knob.click(function() 
+		$input.on("change", function() 
 		{
-			return false;
+			var value = toValue(Number(this.value));
+			$input.attr("aria-valuetext", format(value));
+			onChange(value);
 		});
-		$knob.on("mousedown touchstart", function() 
-		{
-			onSlideStart(
-				function(e) 
-				{
-					var pos = calcPosition(e);
-					setPosition(pos);
-					if (onSlideChange) onSlideChange(min + pos * (max - min));
-				},
-				function(e) 
-				{
-					var pos = calcPosition(e);
-					setPosition(pos);
-					onChange(min + pos * (max - min));
-				}
-			);
-			
-			return false;
-		});
-		
+
 		return {
 			setValue(value) 
 			{
-				setPosition((Math.min(value, max) - min) / (max - min));
+				var position = Math.round((Math.min(value, max) - min) / (max - min) * steps);
+				$input.val(position).attr("aria-valuetext", format(toValue(position)));
 			}
 		};
 
-		function setPosition(pos) 
+		function toValue(position) 
 		{
-			var percent = (100 * pos) + "%";
-			$knob.css("left", percent);
-			$bar.css("width", percent);
-		}
-		function calcPosition(e) 
-		{
-			var rect = $track.get(0).getBoundingClientRect();
-			var position = (e.clientX - rect.left) / rect.width;
-			position = Math.min(1, Math.max(position, 0));
-			
-			return step * Math.round(position / step);
+			return min + (position / steps) * (max - min);
 		}
 	}
 
-	function onSlideStart(onSlideMove, onSlideStop) 
-	{
-		$(document).on("mousemove", onSlideMove);
-		$(document).on("mouseup mouseleave", onStop);
-		$(document).on("touchmove", onTouchMove);
-		$(document).on("touchend touchcancel", onTouchEnd);
-
-		function onTouchMove(e) 
-		{
-			e.clientX = e.originalEvent.changedTouches[0].clientX;
-			e.clientY = e.originalEvent.changedTouches[0].clientY;
-			onSlideMove(e);
-			
-			return false;
-		}
-		function onTouchEnd(e) 
-		{
-			e.clientX = e.originalEvent.changedTouches[0].clientX;
-			e.clientY = e.originalEvent.changedTouches[0].clientY;
-			onStop(e);
-			
-			return false;
-		}
-		function onStop(e) 
-		{
-			$(document).off("mousemove", onSlideMove);
-			$(document).off("mouseup mouseleave", onStop);
-			$(document).off("touchmove", onTouchMove);
-			$(document).off("touchend touchcancel", onTouchEnd);
-			if (onSlideStop) onSlideStop(e);
-			
-			return false;
-		}
-	}
 })();

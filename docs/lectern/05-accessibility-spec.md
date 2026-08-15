@@ -13,6 +13,12 @@ The failure mode nobody tests for is double-speech. A blind user running JAWS or
 Rules:
 
 1. **Never auto-read.** Reading is always explicitly user-invoked. No read-on-page-load, no read-on-navigate, ever. This is also an exam integrity requirement.
+   Amendment (phase 5): the single sanctioned exception is the exam-safe
+   overlay announcement. It is off by default, activates only when the user
+   has enabled exam-safe mode AND an overlay selector is configured
+   (decision D15), runs only after a user-invoked read injected the content
+   script, and announces exam-critical interrupt overlays that a student
+   must not miss. It never reads page content.
 2. **Do not narrate your own UI through the TTS engine.** Extension UI is announced by the user's screen reader through normal accessible markup. Lectern's synthesized voice is for page content only.
 3. **Status changes use a single polite live region.** One `aria-live="polite"` region for playback state. Do not use `assertive` for anything short of an error. Do not add a second live region.
 4. **Pause on screen reader interruption is not detectable, so give the user a fast out.** A global keyboard shortcut that stops speech immediately, working regardless of focus location.

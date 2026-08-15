@@ -13,6 +13,15 @@ body {
 #imgLoading {
   height: 32px;
 }
+@media (prefers-reduced-motion: reduce) {
+  /* No animated progress indicators for users who opted out (accessibility
+     spec). The animated gif is swapped for a static partial ring drawn
+     inline, so loading still has a visible indicator; content: url()
+     replaces the image source, so the gif is never even fetched. */
+  #imgLoading {
+    content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3a13 13 0 1 1-9.19 3.81" fill="none" stroke="%23757575" stroke-width="4" stroke-linecap="round"/></svg>');
+  }
+}
 
 #buttons {
   min-width: 85px;
@@ -48,7 +57,11 @@ body {
 }
 
 body.is-popup #highlight {
+  /* Reflow (accessibility spec: usable at 200% zoom and at 320 CSS pixel
+     width without horizontal scroll): the preferred width yields to the
+     viewport minus the 15px body side margins. */
   width: 350px;
+  max-width: calc(100vw - 30px);
   height: 300px;
 }
 #highlight {
@@ -61,8 +74,12 @@ body.is-popup #highlight {
   position: relative;
   box-sizing: border-box;
 }
+/* The active paragraph carries a border in addition to the background so
+   the playing position is not conveyed by color alone (accessibility spec:
+   do not convey state by color alone). Inline borders do not shift layout. */
 #highlight span.active {
   background-color: yellow;
+  border-bottom: 2px solid currentColor;
 }
 .dark-mode #highlight {
   background-color: #333;
@@ -145,7 +162,8 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
 #status {
   min-width: 250px;
   font-size: small;
-  color: red;
+  /* 7.3:1 on white; pure red was 4.0:1 and failed AA when errors show. */
+  color: #b00020;
   text-align: center;
   display: none;
 }
@@ -161,6 +179,55 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
 #attribution a {
   color: #888;
   text-decoration: none;
+}
+
+/* Reflow: below 380px the transport row and the toolbar wrap instead of
+   forcing a horizontal scrollbar. */
+@media (max-width: 379px) {
+  #buttons {
+    white-space: normal;
+  }
+  #toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+/* Forced colors / OS high contrast: the icon buttons and the playing-word
+   marker restate their colors as system keywords so they track whatever
+   palette the user chose. The transparent toolbar borders become visible
+   button boundaries. */
+@media (forced-colors: active) {
+  .button-1,
+  #toolbar .btn {
+    background-color: ButtonFace;
+    color: ButtonText;
+    border-color: ButtonText;
+    text-shadow: none;
+  }
+  #highlight span.active {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+    border-bottom-color: HighlightText;
+  }
+}
+
+/* Increased contrast preference: darker glyphs and real borders on the
+   surfaces that sit closest to the AA thresholds. */
+@media (prefers-contrast: more) {
+  .button-1 {
+    color: #212529;
+    text-shadow: none;
+  }
+  .dark-mode .button-1 {
+    color: #212529;
+  }
+  #toolbar .btn {
+    border-color: currentColor;
+  }
+  #highlight {
+    border-color: #212529;
+  }
 }
 
 .google-logo span:nth-child(1), .google-logo span:nth-child(4) {

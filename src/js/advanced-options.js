@@ -1,7 +1,8 @@
-import { getSettings, updateSettings, domReady } from "./defaults.js";
+import { getSettings, updateSettings, domReady, setI18nText } from "./defaults.js";
 
 Promise.all([getSettings(), domReady()]).then(([settings]) => 
 {
+	setI18nText();
 	$("button.close")
 		.show()
 		.click(() => history.back());
