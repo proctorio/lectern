@@ -14,7 +14,7 @@
     "lint:check": "eslint src/js test tools",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "package": "npm run build && cp LICENSE NOTICE dist/ && cd dist && zip -r ../build/package.zip . -x \\*.map",
+    "package": "npm run build && node tools/package.js",
     "audit:remote": "bash scripts/audit-remote-code.sh dist",
     "audit:manifest": "bash scripts/verify-manifest.sh dist/manifest.json",
     "test:integration": "npm run build && playwright test"
@@ -40,6 +40,7 @@
     "@proctorio/eslint-config": "4.0.3",
     "@vitest/coverage-v8": "4.1.10",
     "@webext-core/fake-browser": "2.0.1",
+    "adm-zip": "0.6.0",
     "esbuild": "0.28.2",
     "eslint": "10.0.0",
     "jsdom": "30.0.1",

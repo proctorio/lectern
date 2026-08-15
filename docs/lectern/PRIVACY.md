@@ -11,7 +11,7 @@ privacy-forward extension.
 
 ## Lectern Privacy Policy
 
-Last updated: FILL IN
+Last updated: 2026-08-14 (draft pending legal review and hosting URL)
 
 ### Summary
 
@@ -36,14 +36,6 @@ your browser. There is no account, no sign-in, and no analytics.
 - Does not track browsing history.
 - Does not sell or share data with third parties, because it does not collect any.
 
-### Optional features that involve a network
-
-FILL IN OR DELETE. If bring-your-own-key cloud voices ship, describe precisely: the
-feature is off by default, the user supplies their own credentials, requests go directly
-from the browser to the provider the user chose, Proctorio operates no intermediary
-server and receives no data, and the provider's own privacy policy governs that request.
-If the feature does not ship, delete this section entirely.
-
 ### Exam-safe mode
 
 When exam-safe mode is active, Lectern uses only local device voices, disables any
@@ -58,7 +50,9 @@ deployment requires it.
 
 ### Changes
 
-FILL IN.
+Material changes to this policy will be announced in the extension's release
+notes and reflected in the date above. Because Lectern collects nothing,
+changes are expected to be rare and editorial.
 
 ### Contact
 
