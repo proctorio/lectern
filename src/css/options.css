@@ -16,7 +16,9 @@ body {
   max-width: 640px;
 }
 
-/* Section card: the secondary surface over the page's base surface. */
+/* Section card: the secondary surface over the page's base surface. clear
+   keeps the floated close button (shown when the page is reached from the
+   popup) above the first card instead of overlapping it. */
 .card {
   background-color: var(--background-surface-secondary);
   border: 1px solid var(--border-secondary);
@@ -24,19 +26,34 @@ body {
   box-shadow: var(--shadow-sm);
   padding: var(--space-16);
   margin-bottom: var(--space-8);
+  clear: both;
+}
+
+/* Footer row of a card: divider plus quiet links, the RDS support-section
+   caption pattern. */
+.card-separator {
+  height: 1px;
+  background: var(--background-separator);
+  border: none;
+  margin: var(--space-12) 0;
+}
+.card-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 /* The advanced-options link stays in the layout (display:none would drop it
-   from the tab order and make it mouse-only) but is invisible until the
-   heading is hovered or the link itself receives keyboard focus. */
+   from the tab order and make it mouse-only) but is invisible until its row
+   is hovered or the link itself receives keyboard focus. */
 #expand-button {
   text-decoration: none;
-  font-size: .75em;
+  font-size: 1em;
   opacity: 0;
   cursor: pointer;
   color: var(--text-info);
 }
-h1:hover #expand-button {
+.card-links:hover #expand-button {
   opacity: .6;
 }
 #expand-button:focus-visible {

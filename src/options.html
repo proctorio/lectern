@@ -15,17 +15,9 @@
     <button type="button" class="close" data-i18n-label="options_close_label">
       <span aria-hidden="true">&times;</span>
     </button>
-    <h1>
-      <span data-i18n="options_heading"></span>
-      <a href="advanced-options.html" id="expand-button" class="material-icons" data-i18n-label="options_expand_label">open_in_new</a>
-    </h1>
-
-    <div class="form-group">
-      <!-- A span, not an anchor, because the target is a chrome:// URL that
-           only tabs.create may open; role and tabindex make it a real link
-           for keyboard and screen reader users. -->
-      <span id="hotkeys-link" role="link" tabindex="0" data-i18n="options_hotkeys_link"></span>
-    </div>
+    <!-- The heading stays for document structure and assistive tech; the
+         visible page chrome is just the cards. -->
+    <h1 class="visually-hidden" data-i18n="options_heading"></h1>
 
     <section class="card">
     <div class="layout">
@@ -77,6 +69,15 @@
         <option value="2" data-i18n="options_highlighting_window"></option>
       </select>
 
+    </div>
+
+    <hr class="card-separator">
+    <div class="card-links">
+      <!-- A span, not an anchor, because the target is a chrome:// URL that
+           only tabs.create may open; role and tabindex make it a real link
+           for keyboard and screen reader users. -->
+      <span id="hotkeys-link" role="link" tabindex="0" data-i18n="options_hotkeys_link"></span>
+      <a href="advanced-options.html" id="expand-button" class="material-icons" data-i18n-label="options_expand_label">open_in_new</a>
     </div>
     </section>
 
