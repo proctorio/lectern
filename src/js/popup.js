@@ -139,7 +139,6 @@ async function updateButtons()
 	lastPlaybackState = state;
 	if (announcementKey) $("#playback-status").text(brapi.i18n.getMessage(announcementKey));
 
-	$("#imgLoading").toggle(state == "LOADING");
 	$("#btnSettings").toggle(state == "STOPPED");
 	$("#btnPlay").toggle(state == "PAUSED" || state == "STOPPED");
 
@@ -149,19 +148,33 @@ async function updateButtons()
 	// accessible name). Only write the attribute when it actually changes.
 	const playLabel = brapi.i18n.getMessage(state == "PAUSED" ? "popup_resume_label" : "popup_play_label");
 	if ($("#btnPlay").attr("aria-label") != playLabel) $("#btnPlay").attr("aria-label", playLabel);
-	$("#btnPause").toggle(state == "PLAYING");
-	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
-	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED");
 
-	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech) 
+	// The full transport appears as one stable row the moment loading
+	// starts (no layout jump when the voice comes up); the pause button
+	// doubles as the loading indicator via a spinner ring, and pressing it
+	// while loading pauses the pending playback.
+	$("#btnPause").toggle(state == "PLAYING" || state == "LOADING").toggleClass("loading", state == "LOADING");
+	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
+	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED" || state == "LOADING");
+
+	// Transport bounds mirror document.js: rewind and forward are no-ops at
+	// the first and last chunk, so the buttons disable there. On a short
+	// page both can disable at once, hence the stop-button focus fallback.
+	const atFirstChunk = !speech || speech.position.index <= 0;
+	const atLastChunk = !speech || speech.position.index >= speech.texts.length - 1;
+	setStepButtonDisabled("#btnRewind", atFirstChunk, ["#btnForward", "#btnStop"]);
+	setStepButtonDisabled("#btnForward", atLastChunk, ["#btnRewind", "#btnStop"]);
+
+	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech)
 	{
 		$("#highlight, #toolbar").show();
 		updateHighlighting(speech);
 	}
-	else 
+	else
 	{
 		$("#highlight, #toolbar").hide();
 	}
+	applyPopupWidth(settings);
 }
 
 function updateHighlighting(speech)
@@ -348,65 +361,121 @@ function onSeek(n, offset)
 		.catch(handleError);
 }
 
-function changeFontSize(delta) 
+// Step bounds shared by the click guards and the disabled states: the font
+// steps map to getFontSize's cases, the window steps to getWindowSize's.
+var FONT_SIZE_RANGE = [1, 8];
+var WINDOW_SIZE_RANGE = [1, 3];
+
+function changeFontSize(delta)
 {
 	getSettings(["highlightFontSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
 			var newSize = (settings.highlightFontSize || defaults.highlightFontSize) + delta;
-			if (newSize >= 1 && newSize <= 8) return updateSettings({highlightFontSize: newSize}).then(refreshSize);
+			if (newSize >= FONT_SIZE_RANGE[0] && newSize <= FONT_SIZE_RANGE[1]) return updateSettings({highlightFontSize: newSize}).then(refreshSize);
 		})
 		.catch(handleError);
 }
 
-function changeWindowSize(delta) 
+function changeWindowSize(delta)
 {
 	getSettings(["highlightWindowSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
 			var newSize = (settings.highlightWindowSize || defaults.highlightWindowSize) + delta;
-			if (newSize >= 1 && newSize <= 3) return updateSettings({highlightWindowSize: newSize}).then(refreshSize);
+			if (newSize >= WINDOW_SIZE_RANGE[0] && newSize <= WINDOW_SIZE_RANGE[1]) return updateSettings({highlightWindowSize: newSize}).then(refreshSize);
 		})
 		.catch(handleError);
 }
 
-function refreshSize() 
+function refreshSize()
 {
 	return getSettings(["highlightFontSize", "highlightWindowSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
-			var fontSize = getFontSize(settings);
-			var windowSize = getWindowSize(settings);
 			$("#highlight").css({
-				"font-size": fontSize
+				"font-size": getFontSize(settings)
 			});
-			if (queryString.isPopup) $("#highlight").css({
-				width: isMobileOS() ? "100%" : windowSize[0],
-				height: windowSize[1]
-			});
+			updateSizeButtons(settings);
+			if (queryString.isPopup)
+			{
+				$("#highlight").css({height: getWindowSize(settings)[1]});
+				applyPopupWidth(settings);
+			}
 		});
-	function getFontSize(settings) 
+}
+
+// Disables a step button at its bound. When the button being disabled holds
+// keyboard focus, focus moves to the first visible enabled counterpart so
+// the focus position is never silently dropped to the page (disabled
+// buttons leave the tab order).
+function setStepButtonDisabled(id, disabled, counterpartIds)
+{
+	var button = $(id);
+	if (disabled && button.is(":focus"))
 	{
-		switch (settings.highlightFontSize || defaults.highlightFontSize) 
+		for (const counterpartId of counterpartIds)
 		{
-			case 1: return ".9em";
-			case 2: return "1em";
-			case 3: return "1.1em";
-			case 4: return "1.2em";
-			case 5: return "1.3em";
-			case 6: return "1.4em";
-			case 7: return "1.5em";
-			default: return "1.6em";
+			var counterpart = $(counterpartId);
+			if (counterpart.is(":visible") && !counterpart.prop("disabled"))
+			{
+				counterpart.trigger("focus");
+				break;
+			}
 		}
 	}
-	function getWindowSize(settings) 
+	button.prop("disabled", disabled);
+}
+
+function updateSizeButtons(settings)
+{
+	var fontSize = settings.highlightFontSize || defaults.highlightFontSize;
+	var windowSize = settings.highlightWindowSize || defaults.highlightWindowSize;
+	setStepButtonDisabled("#decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], ["#increase-font-size"]);
+	setStepButtonDisabled("#increase-font-size", fontSize >= FONT_SIZE_RANGE[1], ["#decrease-font-size"]);
+	setStepButtonDisabled("#decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], ["#increase-window-size"]);
+	setStepButtonDisabled("#increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], ["#decrease-window-size"]);
+}
+
+// The toolbar popup window follows an explicit width set on BOTH html and
+// body: Chrome's popup auto-resize only ever grows intrinsic widths (height
+// shrinks fine, width ratchets; verified against a real popup via
+// chrome.action.openPopup), and a definite width on the html element is
+// what releases the ratchet so the window also shrinks. The body is
+// border-box (popup.css), so the window width equals the value set here:
+// the configured window size while the transcript shows, a compact
+// constant when idle.
+var IDLE_POPUP_WIDTH = 250;
+
+function applyPopupWidth(settings)
+{
+	if (!queryString.isPopup || isMobileOS()) return;
+	const width = $("#highlight").is(":visible") ? getWindowSize(settings)[0] : IDLE_POPUP_WIDTH;
+	$("html, body").css("width", width);
+}
+
+function getFontSize(settings)
+{
+	switch (settings.highlightFontSize || defaults.highlightFontSize)
 	{
-		switch (settings.highlightWindowSize || defaults.highlightWindowSize) 
-		{
-			case 1: return [430, 330];
-			case 2: return [550, 420];
-			default: return [750, 450];
-		}
+		case 1: return ".9em";
+		case 2: return "1em";
+		case 3: return "1.1em";
+		case 4: return "1.2em";
+		case 5: return "1.3em";
+		case 6: return "1.4em";
+		case 7: return "1.5em";
+		default: return "1.6em";
+	}
+}
+
+function getWindowSize(settings)
+{
+	switch (settings.highlightWindowSize || defaults.highlightWindowSize)
+	{
+		case 1: return [430, 330];
+		case 2: return [550, 420];
+		default: return [750, 450];
 	}
 }
 

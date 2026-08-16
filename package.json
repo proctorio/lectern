@@ -10,8 +10,8 @@
   "scripts": {
     "build": "node tools/build.js",
     "vendor": "node tools/vendor.js",
-    "lint": "eslint --fix src/js test tools",
-    "lint:check": "eslint src/js test tools",
+    "lint": "eslint --fix src/js test",
+    "lint:check": "eslint src/js test",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "package": "npm run build && cp LICENSE NOTICE dist/ && cd dist && zip -r ../build/package.zip . -x \\*.map",

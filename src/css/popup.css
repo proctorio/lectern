@@ -1,74 +1,137 @@
+/* Popup player, styled with the RDS tokens defined in common.css. The
+   popup window itself is the card: secondary-surface fill with space-16
+   padding, sections separated by space-8, matching the extension-popup
+   shell spec. */
 
 body {
-  margin: 20px 15px 10px 15px;
-}
-.dark-mode a {
-  color: yellowgreen;
+  margin: 0;
+  padding: var(--space-16);
+  /* border-box so the explicit width applyPopupWidth (popup.js) sets on
+     html and body IS the popup window width, padding included. */
+  box-sizing: border-box;
+  background-color: var(--background-surface-secondary);
+  /* The transcript font-size steps popup.js applies to #highlight are em
+     values resolved against this base; 20px preserves the established
+     reading sizes exactly. UI chrome overrides with token fonts below. */
+  font-size: 20px;
+  font-family: var(--font-family-sans-serif);
 }
 
 #speech-info {
   text-align: center;
 }
 
-#imgLoading {
-  height: 32px;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* No animated progress indicators for users who opted out (accessibility
-     spec). The animated gif is swapped for a static partial ring drawn
-     inline, so loading still has a visible indicator; content: url()
-     replaces the image source, so the gif is never even fetched. */
-  #imgLoading {
-    content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3a13 13 0 1 1-9.19 3.81" fill="none" stroke="%23757575" stroke-width="4" stroke-linecap="round"/></svg>');
-  }
-}
-
+/* Transport row */
 #buttons {
   min-width: 85px;
   text-align: center;
-  margin: 15px;
+  margin-bottom: var(--space-8);
   white-space: nowrap;
 }
 #buttons > img {
   vertical-align: top;
 }
 
+/* Transport buttons: outlined RDS buttons. Play and pause, the primary
+   actions, are the filled variant. */
 .button-1 {
   cursor: pointer;
-  border: 2px outset;
-  border-radius: 5px;
-  background-color: #e4e4e4;
-  font-size: x-large;
-  color: #757575;
-  padding: 3px;
-  text-shadow: 1px 1px white;
-}
-.button-1:active {
-  border: 2px inset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-40);
+  height: var(--space-40);
+  margin: 0 var(--space-2);
+  padding: 0;
+  font-size: 20px;
+  color: var(--text-default);
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--border-radius-button-default);
+  vertical-align: top;
 }
 .button-1:hover {
-  color: #606060;
+  background-color: var(--background-default-hover);
+}
+.button-1:active {
+  background-color: var(--background-default-pressed);
+}
+.button-1:disabled,
+.button-1:disabled:hover,
+.button-1:disabled:active {
+  color: var(--text-disabled);
+  background-color: transparent;
+  cursor: default;
+}
+
+/* Loading: the pause button doubles as the indicator, a ring spun from
+   currentColor in place of its icon, so the transport row never shifts and
+   the colors track theme and forced-colors automatically. Under reduced
+   motion the global animation collapse (common.css) leaves it as a static
+   partial ring, which still reads as a visible loading indicator
+   (accessibility spec: no animated progress for users who opted out). */
+.button-1.loading {
+  position: relative;
+  /* The icon glyph is the button's own text (the material-icons class sits
+     on the button, not a child), so it hides via font-size, which keeps
+     currentColor alive for the ring and the aria-label intact. */
+  font-size: 0;
+}
+.button-1.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 3px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 1s linear infinite;
+}
+@keyframes button-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+#btnPlay, #btnPause {
+  color: var(--text-base);
+  background-color: var(--background-default-inverse-default);
+  border-color: var(--background-default-inverse-default);
+}
+#btnPlay:hover, #btnPause:hover {
+  background-color: var(--background-default-inverse-hover);
+  border-color: var(--background-default-inverse-hover);
+}
+#btnPlay:active, #btnPause:active {
+  background-color: var(--background-default-inverse-pressed);
+  border-color: var(--background-default-inverse-pressed);
 }
 
 #btnRewind, #btnForward {
-  margin: 0 1px;
-  font-size: small;
-  vertical-align: text-bottom;
+  font-size: 16px;
 }
 
+/* Transcript card. The popup window's width is driven by an explicit body
+   width that popup.js applies while the transcript shows (see
+   applyPopupWidth); the transcript just fills it. Neither may carry a
+   viewport-based clamp: Chrome sizes the popup window to the document's
+   intrinsic width, and any 100vw-derived max-width collapses that to
+   whatever tiny size the window opened at, so it never grows (this shipped
+   once and the playing popup rendered ~100px wide in the field). A
+   fixed-width popup is the design system's own convention for
+   browser-chrome surfaces (RDS STYLE.md section 1.7); reflow for narrow
+   viewports and high zoom is served by the tab reading surface, which has
+   no fixed widths. */
 body.is-popup #highlight {
-  /* Reflow (accessibility spec: usable at 200% zoom and at 320 CSS pixel
-     width without horizontal scroll): the preferred width yields to the
-     viewport minus the 15px body side margins. */
-  width: 350px;
-  max-width: calc(100vw - 30px);
   height: 300px;
 }
 #highlight {
-  border: 1px solid lightgray;
-  padding: 1rem;
-  background-color: #ffefd5;
-  line-height: 1.35em;
+  background-color: var(--background-container-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius-default);
+  padding: var(--space-16);
+  line-height: 1.4;
   overflow: auto;
   word-wrap: break-word;
   position: relative;
@@ -78,25 +141,17 @@ body.is-popup #highlight {
    the playing position is not conveyed by color alone (accessibility spec:
    do not convey state by color alone). Inline borders do not shift layout. */
 #highlight span.active {
-  background-color: yellow;
+  background-color: var(--highlight-active-bg);
+  color: var(--highlight-active-text);
   border-bottom: 2px solid currentColor;
-}
-.dark-mode #highlight {
-  background-color: #333;
-  border: none;
-  color: #d0d0d0;
-}
-.dark-mode #highlight span.active {
-  background-color: #0c4e00;
 }
 body:not(.is-popup) #highlight {
   height: calc(100vh - 150px);
 }
 
-
+/* Bottom toolbar: joined groups of small outlined buttons */
 #toolbar {
-  margin-top: .5em;
-  text-align: right;
+  margin-top: var(--space-8);
   display: flex;
 }
 #toolbar .btn-group {
@@ -106,103 +161,94 @@ body:not(.is-popup) #highlight {
   margin-right: auto;
 }
 #toolbar .btn-group:nth-child(2) {
-  margin-right: .25rem;
+  margin-right: var(--space-4);
 }
 #toolbar .btn-group .btn:first-child {
-  border-top-left-radius: .5rem;
-  border-bottom-left-radius: .5rem;
+  border-top-left-radius: var(--border-radius-button-default);
+  border-bottom-left-radius: var(--border-radius-button-default);
 }
 #toolbar .btn-group .btn:last-child {
-  border-top-right-radius: .5rem;
-  border-bottom-right-radius: .5rem;
+  border-top-right-radius: var(--border-radius-button-default);
+  border-bottom-right-radius: var(--border-radius-button-default);
 }
 #toolbar .btn {
   position: relative;
   flex: 0 1 auto;
   display: flex;
   align-items: center;
-  padding: .25rem .5rem;
-  font-size: .875rem;
-  line-height: 1.5;
-  color: #212529;
-  background-color: #f8f9fa;
-  border: 1px solid transparent;
-  font-weight: 400;
+  height: var(--space-32);
+  padding: 0 var(--space-8);
+  font: var(--ui-sm-regular);
+  color: var(--text-default);
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   user-select: none;
   cursor: pointer;
-  transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+#toolbar .btn + .btn {
+  margin-left: -1px;
 }
 #toolbar .btn:hover {
-  background-color: #e2e6ea;
-  border-color: #dae0e5;
+  background-color: var(--background-default-hover);
+}
+#toolbar .btn:active {
+  background-color: var(--background-default-pressed);
+}
+#toolbar .btn:disabled,
+#toolbar .btn:disabled:hover,
+#toolbar .btn:disabled:active {
+  color: var(--text-disabled);
+  background-color: transparent;
+  cursor: default;
 }
 #toolbar .material-icons {
-  font-size: 1em;
-}
-.dark-mode #toolbar .btn {
-  background-color: #3e3e3e;
-  color: #ddd;
+  font-size: 18px;
 }
 body:not(.is-popup) #toolbar .btn-group.window-size {
   display: none;
 }
 
-
-#footer {
-  text-align: center;
-  font-size: small;
-  line-height: 1.3em;
-  color: #888;
-  white-space: nowrap;
-}
-#footer:not(.announcement) a {
-  color: #aaa;
-}
-
 #status {
-  min-width: 250px;
-  font-size: small;
-  /* 7.3:1 on white; pure red was 4.0:1 and failed AA when errors show. */
-  color: #b00020;
+  font: var(--body-sm-regular);
+  color: var(--text-error);
   text-align: center;
   display: none;
 }
-.dark-mode #status {
-  color: #f88;
-}
 
-#attribution {
-  margin-top: 10px;
-  text-align: center;
-  font-size: smaller;
-}
-#attribution a {
-  color: #888;
-  text-decoration: none;
-}
-
-/* Reflow: below 380px the transport row and the toolbar wrap instead of
-   forcing a horizontal scrollbar. */
+/* Reflow, tab surface only: below 380px the transport row and the toolbar
+   wrap instead of forcing a horizontal scrollbar. The toolbar popup is
+   excluded: its window opens at the intrinsic width of the content, so
+   wrapping there would let the idle popup collapse to a single stacked
+   column of buttons instead of one row. */
 @media (max-width: 379px) {
-  #buttons {
+  body:not(.is-popup) #buttons {
     white-space: normal;
   }
-  #toolbar {
+  body:not(.is-popup) #toolbar {
     flex-wrap: wrap;
   }
 }
 
 /* Forced colors / OS high contrast: the icon buttons and the playing-word
    marker restate their colors as system keywords so they track whatever
-   palette the user chose. The transparent toolbar borders become visible
-   button boundaries. */
+   palette the user chose. */
 @media (forced-colors: active) {
   .button-1,
   #toolbar .btn {
     background-color: ButtonFace;
     color: ButtonText;
     border-color: ButtonText;
-    text-shadow: none;
+  }
+  #toolbar .btn:disabled,
+  #toolbar .btn:disabled:hover,
+  #toolbar .btn:disabled:active,
+  .button-1:disabled,
+  .button-1:disabled:hover,
+  .button-1:disabled:active {
+    color: GrayText;
+    border-color: GrayText;
+    background-color: ButtonFace;
   }
   #highlight span.active {
     forced-color-adjust: none;
@@ -212,33 +258,14 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
   }
 }
 
-/* Increased contrast preference: darker glyphs and real borders on the
-   surfaces that sit closest to the AA thresholds. */
+/* Increased contrast preference: real borders on the surfaces that sit
+   closest to the AA thresholds. */
 @media (prefers-contrast: more) {
-  .button-1 {
-    color: #212529;
-    text-shadow: none;
-  }
-  .dark-mode .button-1 {
-    color: #212529;
-  }
+  .button-1,
   #toolbar .btn {
     border-color: currentColor;
   }
   #highlight {
-    border-color: #212529;
+    border-color: var(--text-default);
   }
-}
-
-.google-logo span:nth-child(1), .google-logo span:nth-child(4) {
-  color: #4885ed;
-}
-.google-logo span:nth-child(2), .google-logo span:nth-child(6) {
-  color: #db3236;
-}
-.google-logo span:nth-child(3) {
-  color: #f4c20d;
-}
-.google-logo span:nth-child(5) {
-  color: #3cba54;
 }

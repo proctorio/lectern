@@ -1,29 +1,59 @@
+/* Options pages, styled with the RDS tokens defined in common.css: base
+   surface behind white (dark: slate) rounded cards, filled and outlined
+   RDS buttons, native controls tinted through the token palette. */
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-  font-weight: 400;
-  line-height: 1.5;
-  color: #212529;
+  font: var(--body-sm-regular);
 }
 
 .container-fluid {
-  padding: 1rem;
+  padding: var(--space-16);
+  max-width: 640px;
+}
+
+/* Section card: the secondary surface over the page's base surface. clear
+   keeps the floated close button (shown when the page is reached from the
+   popup) above the first card instead of overlapping it. */
+.card {
+  background-color: var(--background-surface-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-16);
+  margin-bottom: var(--space-8);
+  clear: both;
+}
+
+/* Footer row of a card: divider plus quiet links, the RDS support-section
+   caption pattern. */
+.card-separator {
+  height: 1px;
+  background: var(--background-separator);
+  border: none;
+  margin: var(--space-12) 0;
+}
+.card-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 /* The advanced-options link stays in the layout (display:none would drop it
-   from the tab order and make it mouse-only) but is invisible until the
-   heading is hovered or the link itself receives keyboard focus. */
+   from the tab order and make it mouse-only) but is invisible until its row
+   is hovered or the link itself receives keyboard focus. */
 #expand-button {
   text-decoration: none;
-  font-size: .75em;
+  font-size: 1em;
   opacity: 0;
   cursor: pointer;
+  color: var(--text-info);
 }
-h1:hover #expand-button {
+.card-links:hover #expand-button {
   opacity: .6;
 }
 #expand-button:focus-visible {
@@ -37,85 +67,66 @@ button.close {
   -webkit-appearance: none;
   display: none;
 }
-
 .close {
   float: right;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
-  color: black;
-  text-shadow: 0 1px 0 white;
-  opacity: .5;
+  color: var(--text-caption);
 }
 .close:not(:disabled) {
   cursor: pointer;
 }
 .close:hover {
-  color: black;
+  color: var(--text-default);
   text-decoration: none;
-  opacity: .75;
-}
-.dark-mode .close {
-  color: white;
 }
 
-/* The page title is an h1 for document structure; it keeps the size the
-   old h2 had so the page looks unchanged. */
 h1 {
   margin-top: 0;
-  margin-bottom: 0;
-  font-size: 2rem;
-  font-weight: 500;
-  line-height: 1.2;
+  margin-bottom: var(--space-16);
+  font: var(--heading-md-medium);
+  letter-spacing: var(--letter-spacing-heading-sm);
 }
 
-/* Section headings are h2 for heading order; they keep the browser default
-   h5 look (0.83em bold) the old markup had. */
 h2.section-heading {
-  font-size: .83em;
-  font-weight: bold;
-  margin: 1.67em 0;
+  font: var(--heading-xs-medium);
+  letter-spacing: var(--letter-spacing-heading-sm);
+  margin: 0 0 var(--space-8) 0;
 }
 
 small {
-  font-size: 80%;
-  font-weight: 400;
+  font: var(--body-xs-regular);
 }
 
 .layout {
-  margin-top: 1rem;
-  min-width: 500px;
+  min-width: 400px;
   display: grid;
   grid-template-columns: auto auto;
   grid-template-rows: auto auto auto auto;
-  grid-gap: 10px 30px;
+  grid-gap: var(--space-12) var(--space-24);
   align-items: center;
 }
 
 .form-group {
-  margin-top: .5rem;
+  margin-top: var(--space-8);
 }
 
 .form-control {
   display: block;
   width: 100%;
-  padding: .375rem .75rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: #495057;
-  background-color: white;
-  background-clip: padding-box;
-  border: 1px solid #ced4da;
-  border-radius: .25rem;
-  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
-}
-select.form-control:not([size]):not([multiple]) {
-  height: calc(2.25rem + 2px);
+  height: var(--space-32);
+  padding: 0 var(--space-8);
+  font: var(--ui-sm-regular);
+  color: var(--text-default);
+  background-color: var(--background-surface-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--border-radius-button-default);
 }
 
 .form-text {
   display: block;
-  margin-top: .25rem;
+  margin-top: var(--space-4);
 }
 
 input {
@@ -124,145 +135,91 @@ input {
   font-size: inherit;
   line-height: inherit;
 }
+
+/* Native checkboxes: the RDS checkbox spec's 18px box with the success
+   ramp as the checked fill; accent-color plus color-scheme (set in
+   common.css for dark) renders every state natively and accessibly. */
 input[type=checkbox] {
-  margin-top: .5rem;
+  width: calc(var(--space-16) + var(--space-2));
+  height: calc(var(--space-16) + var(--space-2));
+  accent-color: var(--background-success-default);
+  vertical-align: text-bottom;
   padding: 0;
 }
-input[type=checkbox] + label {
-  margin-left: .5em;
+input[type=checkbox] + label,
+input[type=checkbox] + span {
+  margin-left: var(--space-8);
 }
 
+/* Buttons: the two RDS variants. Filled is the primary action; outlined is
+   everything else, including the small icon-only buttons. */
 .btn {
-  display: inline-block;
-  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--space-32);
+  padding: 0 var(--space-14);
+  font: var(--ui-sm-regular);
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
   user-select: none;
-  border: 1px solid transparent;
-  padding: .375rem .75rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  border-radius: .25rem;
-  transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  border-radius: var(--border-radius-button-default);
 }
 .btn:not(:disabled) {
   cursor: pointer;
 }
-
 .btn-sm {
-  padding: .25rem .5rem;
-  font-size: .875rem;
-  border-radius: .2rem;
+  padding: 0 var(--space-6);
+  min-width: var(--space-32);
+}
+.btn-sm .material-icons {
+  font-size: 18px;
 }
 
-.btn-light {
-  color: #212529;
-  background-color: #f8f9fa;
-  border-color: #f8f9fa;
+.btn-filled {
+  color: var(--text-base);
+  background-color: var(--background-default-inverse-default);
+  border: 1px solid var(--background-default-inverse-default);
 }
-.btn-light.active {
-  background-color: #dae0e5;
-  border-color: #d3d9df;
+.btn-filled:hover {
+  background-color: var(--background-default-inverse-hover);
+  border-color: var(--background-default-inverse-hover);
 }
-.btn-light:hover {
-  background-color: #e2e6ea;
-  border-color: #dae0e5;
-}
-.dark-mode .btn-light {
-  background-color: #3e3e3e;
-  border-color: transparent;
-  color: #ddd;
-}
-.dark-mode .btn-light.active {
-  background-color: #4e4e4e;
+.btn-filled:active {
+  background-color: var(--background-default-inverse-pressed);
+  border-color: var(--background-default-inverse-pressed);
 }
 
-.btn-info {
-  color: white;
-  /* 5.0:1 with white text; the old #17a2b8 was 3.0:1 and failed AA. */
-  background-color: #117a8b;
-  border-color: #117a8b;
+.btn-outlined {
+  color: var(--text-default);
+  background-color: transparent;
+  border: 1px solid var(--border-default);
 }
-.btn-info:hover {
-  background-color: #0f6674;
-  border-color: #0f6674;
+.btn-outlined:hover {
+  background-color: var(--background-default-hover);
 }
-
-.btn-warning {
-  color: #212529;
-  background-color: #ffc107;
-  border-color: #ffc107;
-}
-.btn-warning:hover {
-  background-color: #e0a800;
-  border-color: #d39e00;
-}
-
-.btn-group {
-  position: relative;
-  display: inline-flex;
-  vertical-align: middle;
-}
-.btn-group > .btn {
-  position: relative;
-  flex: 0 1 auto;
-}
-.btn-group > .btn:not(:first-child) {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
-.btn-group > .btn:not(:last-child) {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.btn-group .btn+.btn {
-  margin-left: -1px;
-}
-
-.btn-group-toggle >.btn input[type=radio] {
-  position: absolute;
-  clip: rect(0,0,0,0);
-  pointer-events: none;
+.btn-outlined:active {
+  background-color: var(--background-default-pressed);
 }
 
 .text-muted {
-  color: #6c755d!important;
-}
-
-.alert {
-  position: relative;
-  padding: .75rem 1.25rem;
-  margin-bottom: 1rem;
-  border: 1px solid transparent;
-  border-radius: .25rem;
-}
-.alert-info {
-  color: #0c5460;
-  background-color: #d1ecf1;
-  border-color: #bee5eb;
-}
-.dark-mode .alert-info {
-  background-color: #3e3e3e;
-  border-color: transparent;
-  color: #ccc;
-}
-.dark-mode .alert-info a {
-  color: #9b9bff;
+  color: var(--text-caption) !important;
 }
 
 .green-check {
   float: right;
-  font-weight: bold;
   display: none;
-  padding: 3px 6px 0 6px;
-  color: white;
-  background-color: #080;
-  border-radius: 2em;
+  padding: var(--space-4) var(--space-6);
+  color: var(--text-base);
+  background-color: var(--background-default-inverse-default);
+  border-radius: var(--border-radius-round);
 }
 
 .buttons {
-  margin-top: 1.5em;
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
 }
 
 #rate-input-div {
@@ -270,38 +227,25 @@ input[type=checkbox] + label {
 }
 
 #rate-warning {
-  color: blue;
+  color: var(--text-info);
   display: none;
-}
-.dark-mode #rate-warning {
-  /* 7.3:1 on #252525; pure blue was 1.78:1 on the dark surface and failed
-     AA. Matches the dark focus ring color. */
-  color: #8ab4f8;
 }
 
 #status {
-  /* 7.3:1 on white; the old inline pure red was 4.0:1 and failed AA. */
-  color: #b00020;
-}
-.dark-mode #status {
-  color: #f88;
+  color: var(--text-error);
 }
 
 #hotkeys-link {
-  /* 7.0:1 on white; the old gray was 3.9:1 and failed AA. */
-  color: #595959;
+  color: var(--text-info);
   cursor: pointer;
   text-decoration: underline;
-}
-.dark-mode #hotkeys-link {
-  color: #999;
 }
 
 .spinner {
   display: inline-block;
   vertical-align: middle;
-  border: 3px solid #333;
-  border-top: 3px solid rgba(0,0,0,0);
+  border: 3px solid var(--text-base);
+  border-top: 3px solid transparent;
   border-radius: 50%;
   box-sizing: border-box;
   width: 16px;
@@ -313,60 +257,61 @@ input[type=checkbox] + label {
   100% { transform: rotate(360deg); }
 }
 
+/* Sliders: a native range input inside the .slider container built by
+   createSlider (options.js). project-local composition: RDS publishes no
+   slider component, so the track and thumb reuse the border and inverse
+   button ramps. Keyboard, slider role, and value semantics all stay
+   native. */
 .slider {
-  position: relative;
-  height: .8em;
-  border-radius: 1em;
-  background-image: linear-gradient(#888, #959595, #a7a7a7, #b4b4b4);
-  margin: 0 .25em;
+  display: flex;
+  align-items: center;
 }
-.slider > .bar {
-  position: absolute;
-  height: 100%;
-  border-radius: 1em;
-  background: linear-gradient(#59928b, #84d1c9, #3e8790);
+.slider input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--space-16);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
-.slider .track {
-  position: absolute;
-  left: .5em;
-  right: .5em;
-  top: 0;
-  bottom: 0;
+.slider input[type=range]::-webkit-slider-runnable-track {
+  height: var(--space-4);
+  border-radius: var(--border-radius-round);
+  background-color: var(--border-default);
 }
-.slider .knob {
-  position: absolute;
-  cursor: ew-resize;
-  margin: -.4em 0 0 -.5em;
-  width: 1em;
-  height: 1.6em;
-  border-radius: .4em;
-  background: linear-gradient(to right, #2a737b, #77bbb3, #77bbb3, #2a737b);
-  touch-action: none;
+.slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--space-16);
+  height: var(--space-16);
+  margin-top: calc((var(--space-4) - var(--space-16)) / 2);
+  border-radius: var(--border-radius-round);
+  border: none;
+  background-color: var(--background-default-inverse-default);
+}
+.slider input[type=range]:hover::-webkit-slider-thumb {
+  background-color: var(--background-default-inverse-hover);
 }
 
-/* Forced colors: the sliders are drawn entirely with gradients and the
-   green check with a hardcoded fill, none of which survive a forced
-   palette. System color keywords keep them visible in any palette;
-   forced-color-adjust: none applies only where every color is already a
-   system keyword. */
+/* Forced colors: styled tracks and thumbs do not survive a forced palette;
+   reverting to native rendering keeps the control visible in any palette. */
 @media (forced-colors: active) {
-  .slider {
-    background-image: none;
-    border: 1px solid ButtonText;
-  }
-  .slider > .bar {
-    forced-color-adjust: none;
-    background: Highlight;
-  }
-  .slider .knob {
-    forced-color-adjust: none;
-    background: ButtonText;
-    border: 1px solid Canvas;
+  .slider input[type=range] {
+    -webkit-appearance: auto;
+    appearance: auto;
   }
   .green-check {
     forced-color-adjust: none;
     background-color: Highlight;
     color: HighlightText;
+  }
+  .btn-filled,
+  .btn-outlined {
+    background-color: ButtonFace;
+    color: ButtonText;
+    border-color: ButtonText;
   }
 }
 
@@ -374,16 +319,11 @@ input[type=checkbox] + label {
    on the surfaces that sit closest to the AA thresholds. */
 @media (prefers-contrast: more) {
   .text-muted {
-    color: #495057 !important;
+    color: var(--text-default) !important;
   }
-  .dark-mode .text-muted {
-    color: #c9c9c9 !important;
-  }
-  .btn-light {
-    border-color: #495057;
-  }
-  .dark-mode .btn-light {
-    border-color: #c9c9c9;
+  .btn-outlined,
+  .form-control {
+    border-color: currentColor;
   }
 }
 
@@ -393,9 +333,9 @@ input[type=checkbox] + label {
 }
 
 #advanced-options {
-  min-width: 500px;
-  margin-top: 1.5rem;
+  margin-top: var(--space-8);
   display: grid;
   grid-template-columns: min-content auto;
+  grid-gap: 0 var(--space-8);
   align-items: start;
 }
