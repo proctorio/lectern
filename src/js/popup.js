@@ -139,7 +139,6 @@ async function updateButtons()
 	lastPlaybackState = state;
 	if (announcementKey) $("#playback-status").text(brapi.i18n.getMessage(announcementKey));
 
-	$("#imgLoading").toggle(state == "LOADING");
 	$("#btnSettings").toggle(state == "STOPPED");
 	$("#btnPlay").toggle(state == "PAUSED" || state == "STOPPED");
 
@@ -149,9 +148,14 @@ async function updateButtons()
 	// accessible name). Only write the attribute when it actually changes.
 	const playLabel = brapi.i18n.getMessage(state == "PAUSED" ? "popup_resume_label" : "popup_play_label");
 	if ($("#btnPlay").attr("aria-label") != playLabel) $("#btnPlay").attr("aria-label", playLabel);
-	$("#btnPause").toggle(state == "PLAYING");
+
+	// The full transport appears as one stable row the moment loading
+	// starts (no layout jump when the voice comes up); the pause button
+	// doubles as the loading indicator via a spinner ring, and pressing it
+	// while loading pauses the pending playback.
+	$("#btnPause").toggle(state == "PLAYING" || state == "LOADING").toggleClass("loading", state == "LOADING");
 	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
-	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED");
+	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED" || state == "LOADING");
 
 	// Transport bounds mirror document.js: rewind and forward are no-ops at
 	// the first and last chunk, so the buttons disable there. On a short

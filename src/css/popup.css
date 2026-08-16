@@ -21,19 +21,6 @@ body {
   text-align: center;
 }
 
-#imgLoading {
-  height: 32px;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* No animated progress indicators for users who opted out (accessibility
-     spec). The animated gif is swapped for a static partial ring drawn
-     inline, so loading still has a visible indicator; content: url()
-     replaces the image source, so the gif is never even fetched. */
-  #imgLoading {
-    content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3a13 13 0 1 1-9.19 3.81" fill="none" stroke="%236a7789" stroke-width="4" stroke-linecap="round"/></svg>');
-  }
-}
-
 /* Transport row */
 #buttons {
   min-width: 85px;
@@ -75,6 +62,36 @@ body {
   color: var(--text-disabled);
   background-color: transparent;
   cursor: default;
+}
+
+/* Loading: the pause button doubles as the indicator, a ring spun from
+   currentColor in place of its icon, so the transport row never shifts and
+   the colors track theme and forced-colors automatically. Under reduced
+   motion the global animation collapse (common.css) leaves it as a static
+   partial ring, which still reads as a visible loading indicator
+   (accessibility spec: no animated progress for users who opted out). */
+.button-1.loading {
+  position: relative;
+}
+.button-1.loading .material-icons {
+  visibility: hidden;
+}
+.button-1.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 1s linear infinite;
+}
+@keyframes button-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 #btnPlay, #btnPause {
   color: var(--text-base);

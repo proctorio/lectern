@@ -104,7 +104,7 @@ test.describe("accessibility gates", () =>
 			document.getElementById("toolbar").style.display = "flex";
 			document.getElementById("status").style.display = "block";
 			document.getElementById("status").textContent = "Representative error text";
-			for (const control of document.querySelectorAll("#buttons button, #imgLoading"))
+			for (const control of document.querySelectorAll("#buttons button"))
 			{
 				control.style.display = "inline-block";
 			}
@@ -148,7 +148,7 @@ test.describe("accessibility gates", () =>
 			document.body.style.width = "430px";
 
 			return {scrollWidth: document.documentElement.scrollWidth,
-										clientWidth: document.documentElement.clientWidth};
+											clientWidth: document.documentElement.clientWidth};
 		});
 		expect(metrics.scrollWidth, "content wider than the designed popup width")
 			.toBeLessThanOrEqual(metrics.clientWidth);
