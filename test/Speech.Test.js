@@ -338,6 +338,35 @@ describe("navigation", () =>
 	});
 });
 
+describe("pronunciation", () =>
+{
+	it("speaks the corrected form while the transcript keeps the original spelling", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["Proctorio monitors this exam."]);
+		speech.play();
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toContain("Prock Torio");
+		expect(chrome.__tts.utterances[0].text).not.toMatch(/proctorio/iu);
+		expect(speech.getInfo().texts[0]).toContain("Proctorio");
+		expect(speech.getInfo().texts[0]).not.toContain("Prock Torio");
+	});
+
+	it("applies the correction to seek slices without shifting display offsets", async() =>
+	{
+		chrome.__tts.eventScript = [{ type: "start" }];
+		const speech = makeSpeech(["Opening paragraph text.", "Proctorio reads this part."]);
+		const chunk = speech.getInfo().texts[0];
+		expect(speech.getInfo().texts).toHaveLength(1);
+
+		speech.seek(0, chunk.indexOf("Proctorio"));
+		await waitForUtterances(1);
+
+		expect(chrome.__tts.utterances[0].text).toBe("Prock Torio reads this part.");
+	});
+});
+
 describe("east asian chunking", () =>
 {
 	it("chunks east asian text by characters with its own punctuation", () =>

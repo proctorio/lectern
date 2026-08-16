@@ -1,6 +1,7 @@
 import * as rxjs from "./vendor/rxjs.js";
 import { isGoogleNative, isChromeOSNative } from "./defaults.js";
 import { browserTtsEngine, TimeoutTtsEngine } from "./tts-engines.js";
+import { applyPronunciations } from "./pronunciation.js";
 
 export function Speech(texts, options) 
 {
@@ -331,8 +332,12 @@ export function Speech(texts, options)
 		};
 	}
 
-	function makePlayback(text) 
+	function makePlayback(text)
 	{
+		// Pronunciation corrections happen here, after chunking and seek
+		// slicing, so every offset in this file keeps referring to the
+		// unmodified display text.
+		text = applyPronunciations(text);
 		if (engine.stop != null) return makePlaybackLegacy(text);
 		else return engine.speak(text, options, playbackState$);
 	}

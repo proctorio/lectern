@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lectern pronunciation lab</title>
+<!--
+  Listening harness for picking the spoken respelling of "Proctorio" (and any
+  future entry in src/js/pronunciation.js). Open this file directly in Chrome
+  (no server needed), pick the voice you use in the extension, and play the
+  candidates. The winner's exact text goes into the corrections table.
+
+  Results transfer to the extension: chrome.tts and this page's
+  speechSynthesis drive the same OS synthesizers, so a respelling that sounds
+  right here sounds right in the extension for the same voice. The voice list
+  marks offline voices; the extension auto-selects an offline voice, and
+  exam-safe mode never uses a network voice.
+
+  Why these candidates: engines typically say "proctor I O" because "proctor"
+  is a dictionary hit and the leftover "io" gets spelled out. Candidates
+  either break the dictionary match (k/ck spellings force whole-word
+  pronunciation) or reshape the tail into patterns engines already know
+  (Vittorio, Oreo, Rio).
+-->
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #181d24; }
+  h1 { font-size: 1.25rem; }
+  fieldset { border: 1px solid #cdd4dc; border-radius: 8px; margin-bottom: 1rem; }
+  label { display: block; margin: .5rem 0 .25rem; font-weight: 500; }
+  select, input[type=text] { width: 100%; padding: .4rem; font-size: 1rem; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: .35rem .5rem; border-top: 1px solid #eff2f6; }
+  td.num { width: 2rem; color: #6a7789; }
+  td.word { font-size: 1.05rem; }
+  td.note { color: #6a7789; font-size: .8rem; }
+  td.play { width: 4rem; text-align: right; }
+  button { padding: .35rem .9rem; font-size: .9rem; cursor: pointer; border: 1px solid #9aa6b4; border-radius: 4px; background: #fff; }
+  button:hover { background: #eff2f6; }
+  button.primary { background: #374250; border-color: #374250; color: #fff; }
+  button.primary:hover { background: #262d35; }
+  tr.playing { background: #b7f4c9; }
+  .row { display: flex; gap: .5rem; align-items: center; margin: .5rem 0; }
+  .row input[type=text] { flex: 1; }
+  .muted { color: #6a7789; font-size: .85rem; }
+</style>
+</head>
+<body>
+  <h1>Lectern pronunciation lab: "Proctorio"</h1>
+  <p class="muted">Pick the voice the extension uses, then play candidates.
+  Target: prok-TOR-ee-oh. Reply with the winning number (and voice), or type
+  your own respelling below and iterate until it sounds right.</p>
+
+  <fieldset>
+    <legend>Voice and delivery</legend>
+    <label for="voice">Voice</label>
+    <select id="voice"></select>
+    <label for="rate">Rate: <span id="rateShow">1.0</span></label>
+    <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1" style="width:100%">
+    <label><input type="checkbox" id="inSentence" checked style="width:auto"> Speak inside a carrier sentence (words sound different in context)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Candidates</legend>
+    <table id="list"></table>
+    <div class="row">
+      <button id="playAll" class="primary">Play all in order</button>
+      <button id="stop">Stop</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Your own attempt</legend>
+    <div class="row">
+      <input type="text" id="custom" placeholder="Type a respelling and hear it immediately" value="">
+      <button id="playCustom" class="primary">Play</button>
+    </div>
+  </fieldset>
+
+<script>
+  const CANDIDATES = [
+    ["Prock Torio",   "the shipped correction, picked by ear 2026-08-14"],
+    ["Proctorio",     "baseline: the uncorrected failure, for comparison"],
+    ["Proctoreeo",    "earlier attempt, superseded"],
+    ["Proktorio",     "k breaks the proctor dictionary match"],
+    ["Procktorio",    "ck breaks the match, keeps the hard c explicit"],
+    ["Proctorrio",    "double r reshapes the tail like Vittorio"],
+    ["Proctoreo",     "tail rides the known word Oreo"],
+    ["Proktoreeo",    "k plus explicit ee-oh tail"],
+    ["Proctor Rio",   "two words, Rio is a known REE-oh"],
+    ["Prock Torrio",  "two words, Torrio like the surname"],
+    ["Prok tor ee oh", "fully spaced syllables"],
+    ["Prock-tore-ee-oh", "hyphenated syllables"],
+    ["Proctoryo",     "y glide tail"]
+  ];
+  const CARRIER = w => `Please close all other tabs before starting your ${w} exam.`;
+
+  const voiceSel = document.getElementById("voice");
+  const list = document.getElementById("list");
+  let voices = [];
+
+  function loadVoices() {
+    voices = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith("en"));
+    voices.sort((a, b) => Number(b.localService) - Number(a.localService));
+    voiceSel.innerHTML = "";
+    for (const [i, v] of voices.entries()) {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `${v.name} (${v.lang})${v.localService ? " [offline]" : " [network]"}`;
+      voiceSel.appendChild(opt);
+    }
+  }
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+
+  let queue = [];
+  function speak(text, then) {
+    const u = new SpeechSynthesisUtterance(text);
+    if (voices[voiceSel.value]) u.voice = voices[voiceSel.value];
+    u.rate = Number(document.getElementById("rate").value);
+    if (then) u.onend = then;
+    speechSynthesis.speak(u);
+  }
+  function speakCandidate(word, row) {
+    speechSynthesis.cancel();
+    queue = [];
+    mark(row);
+    const inSentence = document.getElementById("inSentence").checked;
+    speak(inSentence ? CARRIER(word) : word, () => mark(null));
+  }
+  function mark(row) {
+    for (const tr of list.querySelectorAll("tr")) tr.classList.toggle("playing", tr === row);
+  }
+
+  for (const [i, [word, note]] of CANDIDATES.entries()) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="num">${i + 1}</td><td class="word">${word}</td>` +
+      `<td class="note">${note}</td><td class="play"><button>Play</button></td>`;
+    tr.querySelector("button").onclick = () => speakCandidate(word, tr);
+    list.appendChild(tr);
+  }
+
+  document.getElementById("playAll").onclick = () => {
+    speechSynthesis.cancel();
+    const rows = [...list.querySelectorAll("tr")];
+    let i = 0;
+    const next = () => {
+      if (i >= CANDIDATES.length) { mark(null); return; }
+      const row = rows[i];
+      const word = CANDIDATES[i][0];
+      mark(row);
+      const inSentence = document.getElementById("inSentence").checked;
+      speak(`Option ${i + 1}.`, () => speak(inSentence ? CARRIER(word) : word, () => { i++; next(); }));
+    };
+    next();
+  };
+  document.getElementById("stop").onclick = () => { speechSynthesis.cancel(); mark(null); };
+  document.getElementById("playCustom").onclick = () => {
+    const word = document.getElementById("custom").value.trim();
+    if (word) speakCandidate(word, null);
+  };
+  document.getElementById("custom").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("playCustom").click();
+  });
+  document.getElementById("rate").oninput = function() {
+    document.getElementById("rateShow").textContent = Number(this.value).toFixed(1);
+  };
+</script>
+</body>
+</html>
