@@ -349,24 +349,29 @@ function onSeek(n, offset)
 		.catch(handleError);
 }
 
-function changeFontSize(delta) 
+// Step bounds shared by the click guards and the disabled states: the font
+// steps map to getFontSize's cases, the window steps to getWindowSize's.
+var FONT_SIZE_RANGE = [1, 8];
+var WINDOW_SIZE_RANGE = [1, 3];
+
+function changeFontSize(delta)
 {
 	getSettings(["highlightFontSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
 			var newSize = (settings.highlightFontSize || defaults.highlightFontSize) + delta;
-			if (newSize >= 1 && newSize <= 8) return updateSettings({highlightFontSize: newSize}).then(refreshSize);
+			if (newSize >= FONT_SIZE_RANGE[0] && newSize <= FONT_SIZE_RANGE[1]) return updateSettings({highlightFontSize: newSize}).then(refreshSize);
 		})
 		.catch(handleError);
 }
 
-function changeWindowSize(delta) 
+function changeWindowSize(delta)
 {
 	getSettings(["highlightWindowSize"])
-		.then(function(settings) 
+		.then(function(settings)
 		{
 			var newSize = (settings.highlightWindowSize || defaults.highlightWindowSize) + delta;
-			if (newSize >= 1 && newSize <= 3) return updateSettings({highlightWindowSize: newSize}).then(refreshSize);
+			if (newSize >= WINDOW_SIZE_RANGE[0] && newSize <= WINDOW_SIZE_RANGE[1]) return updateSettings({highlightWindowSize: newSize}).then(refreshSize);
 		})
 		.catch(handleError);
 }
@@ -379,12 +384,33 @@ function refreshSize()
 			$("#highlight").css({
 				"font-size": getFontSize(settings)
 			});
+			updateSizeButtons(settings);
 			if (queryString.isPopup)
 			{
 				$("#highlight").css({height: getWindowSize(settings)[1]});
 				applyPopupWidth(settings);
 			}
 		});
+}
+
+// Disables a size-step button at its bound. When the button being disabled
+// holds keyboard focus, focus moves to its counterpart first so the focus
+// position is never silently dropped to the page.
+function setStepButtonDisabled(id, disabled, counterpartId)
+{
+	var button = $(id);
+	if (disabled && button.is(":focus")) $(counterpartId).trigger("focus");
+	button.prop("disabled", disabled);
+}
+
+function updateSizeButtons(settings)
+{
+	var fontSize = settings.highlightFontSize || defaults.highlightFontSize;
+	var windowSize = settings.highlightWindowSize || defaults.highlightWindowSize;
+	setStepButtonDisabled("#decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], "#increase-font-size");
+	setStepButtonDisabled("#increase-font-size", fontSize >= FONT_SIZE_RANGE[1], "#decrease-font-size");
+	setStepButtonDisabled("#decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], "#increase-window-size");
+	setStepButtonDisabled("#increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], "#decrease-window-size");
 }
 
 // The toolbar popup window follows an explicit width set on BOTH html and

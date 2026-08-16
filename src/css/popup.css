@@ -170,6 +170,13 @@ body:not(.is-popup) #highlight {
 #toolbar .btn:active {
   background-color: var(--background-default-pressed);
 }
+#toolbar .btn:disabled,
+#toolbar .btn:disabled:hover,
+#toolbar .btn:disabled:active {
+  color: var(--text-disabled);
+  background-color: transparent;
+  cursor: default;
+}
 #toolbar .material-icons {
   font-size: 18px;
 }
@@ -207,6 +214,12 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
     background-color: ButtonFace;
     color: ButtonText;
     border-color: ButtonText;
+  }
+  #toolbar .btn:disabled,
+  #toolbar .btn:disabled:hover,
+  #toolbar .btn:disabled:active {
+    color: GrayText;
+    border-color: GrayText;
   }
   #highlight span.active {
     forced-color-adjust: none;
