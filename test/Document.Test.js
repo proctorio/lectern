@@ -311,6 +311,35 @@ describe("Doc active controls", () =>
 		expect(chrome.__tts.utterances.at(-1).text).toContain("beta");
 	});
 
+	it("ignores rewind at the first chunk instead of ending playback", async() =>
+	{
+		const { doc, onEnd } = await makeActiveDoc();
+		doc.rewind();
+		doc.rewind();
+		doc.rewind();
+		await new Promise(resolve => setTimeout(resolve, 800));
+
+		expect(onEnd).not.toHaveBeenCalled();
+		expect(chrome.__tts.utterances.at(-1).text).toContain("alpha");
+		expect(await doc.getState()).toBe("PLAYING");
+	});
+
+	it("ignores forward at the last chunk instead of ending playback", async() =>
+	{
+		const { doc, onEnd } = await makeActiveDoc();
+		doc.forward();
+		await new Promise(resolve => setTimeout(resolve, 800));
+		expect(chrome.__tts.utterances.at(-1).text).toContain("beta");
+
+		doc.forward();
+		doc.forward();
+		await new Promise(resolve => setTimeout(resolve, 800));
+
+		expect(onEnd).not.toHaveBeenCalled();
+		expect(chrome.__tts.utterances.at(-1).text).toContain("beta");
+		expect(await doc.getState()).toBe("PLAYING");
+	});
+
 	it("stops and clears the active speech", async() =>
 	{
 		const { doc } = await makeActiveDoc();
@@ -352,11 +381,11 @@ describe("Doc active controls", () =>
 	});
 });
 
-describe("Doc page-level navigation", () =>
+describe("Doc navigation at the bounds", () =>
 {
 	/**
 	 * @description Starts a doc with a single chunk so speech-level navigation
-	 * is exhausted and page-level fallbacks engage.
+	 * is exhausted in both directions at once.
 	 *
 	 * @return {Promise<Object>} - The active doc and its spy.
 	 */
@@ -371,21 +400,29 @@ describe("Doc page-level navigation", () =>
 		return made;
 	}
 
-	it("advances to the next page and ends when the source is exhausted", async() =>
+	// The upstream page-level fallbacks (advance or rewind to another page,
+	// ending playback when none exists) are gone: the source is single-page,
+	// so they could only ever collapse the player. Both directions are
+	// no-ops at their bound and playback continues.
+	it("keeps playing when forward is pressed on a single chunk", async() =>
 	{
 		const { doc, onEnd } = await makeSingleChunkDoc();
 		doc.forward();
+		doc.forward();
 		await new Promise(resolve => setTimeout(resolve, 30));
 
-		expect(onEnd).toHaveBeenCalledWith();
+		expect(onEnd).not.toHaveBeenCalled();
+		expect(await doc.getState()).toBe("PLAYING");
 	});
 
-	it("rewinds to the previous page and ends when none exists", async() =>
+	it("keeps playing when rewind is pressed on a single chunk", async() =>
 	{
 		const { doc, onEnd } = await makeSingleChunkDoc();
 		doc.rewind();
+		doc.rewind();
 		await new Promise(resolve => setTimeout(resolve, 30));
 
-		expect(onEnd).toHaveBeenCalled();
+		expect(onEnd).not.toHaveBeenCalled();
+		expect(await doc.getState()).toBe("PLAYING");
 	});
 });

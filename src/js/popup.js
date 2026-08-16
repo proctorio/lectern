@@ -153,6 +153,14 @@ async function updateButtons()
 	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
 	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED");
 
+	// Transport bounds mirror document.js: rewind and forward are no-ops at
+	// the first and last chunk, so the buttons disable there. On a short
+	// page both can disable at once, hence the stop-button focus fallback.
+	const atFirstChunk = !speech || speech.position.index <= 0;
+	const atLastChunk = !speech || speech.position.index >= speech.texts.length - 1;
+	setStepButtonDisabled("#btnRewind", atFirstChunk, ["#btnForward", "#btnStop"]);
+	setStepButtonDisabled("#btnForward", atLastChunk, ["#btnRewind", "#btnStop"]);
+
 	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech)
 	{
 		$("#highlight, #toolbar").show();
@@ -393,13 +401,25 @@ function refreshSize()
 		});
 }
 
-// Disables a size-step button at its bound. When the button being disabled
-// holds keyboard focus, focus moves to its counterpart first so the focus
-// position is never silently dropped to the page.
-function setStepButtonDisabled(id, disabled, counterpartId)
+// Disables a step button at its bound. When the button being disabled holds
+// keyboard focus, focus moves to the first visible enabled counterpart so
+// the focus position is never silently dropped to the page (disabled
+// buttons leave the tab order).
+function setStepButtonDisabled(id, disabled, counterpartIds)
 {
 	var button = $(id);
-	if (disabled && button.is(":focus")) $(counterpartId).trigger("focus");
+	if (disabled && button.is(":focus"))
+	{
+		for (const counterpartId of counterpartIds)
+		{
+			var counterpart = $(counterpartId);
+			if (counterpart.is(":visible") && !counterpart.prop("disabled"))
+			{
+				counterpart.trigger("focus");
+				break;
+			}
+		}
+	}
 	button.prop("disabled", disabled);
 }
 
@@ -407,10 +427,10 @@ function updateSizeButtons(settings)
 {
 	var fontSize = settings.highlightFontSize || defaults.highlightFontSize;
 	var windowSize = settings.highlightWindowSize || defaults.highlightWindowSize;
-	setStepButtonDisabled("#decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], "#increase-font-size");
-	setStepButtonDisabled("#increase-font-size", fontSize >= FONT_SIZE_RANGE[1], "#decrease-font-size");
-	setStepButtonDisabled("#decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], "#increase-window-size");
-	setStepButtonDisabled("#increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], "#decrease-window-size");
+	setStepButtonDisabled("#decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], ["#increase-font-size"]);
+	setStepButtonDisabled("#increase-font-size", fontSize >= FONT_SIZE_RANGE[1], ["#decrease-font-size"]);
+	setStepButtonDisabled("#decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], ["#increase-window-size"]);
+	setStepButtonDisabled("#increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], ["#decrease-window-size"]);
 }
 
 // The toolbar popup window follows an explicit width set on BOTH html and

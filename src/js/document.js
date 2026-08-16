@@ -159,17 +159,17 @@ export function Doc(source, onEnd)
 		return readCurrent();
 	}
 
-	async function readCurrent(rewinded) 
+	async function readCurrent()
 	{
 		const texts = await source.getTexts(currentIndex).catch(err => null);
 		await wait(playbackState, "resumed");
-		if (texts) 
+		if (texts)
 		{
-			if (texts.length) 
+			if (texts.length)
 			{
 				foundText = true;
-				
-				return read(texts, rewinded);
+
+				return read(texts);
 			}
 			else 
 			{
@@ -185,7 +185,7 @@ export function Doc(source, onEnd)
 		}
 	}
 
-	async function read(texts, rewinded) 
+	async function read(texts)
 	{
 		texts = texts.map(preprocess);
 		if (info.detectedLang == null) 
@@ -214,7 +214,6 @@ export function Doc(source, onEnd)
 					});
 			}
 		};
-		if (rewinded) await activeSpeech.gotoEnd();
 		
 		return activeSpeech.play();
 	}
@@ -358,36 +357,31 @@ export function Doc(source, onEnd)
 		return Promise.resolve(activeSpeech);
 	}
 
-	// method forward
-	function forward() 
+	// method forward. At the last chunk this is a no-op: the source is
+	// single-page (html-doc getTexts returns null for any index but 0), so
+	// the upstream page-advance this used to fall through to could only
+	// stop playback and fire the end-of-document path, collapsing the
+	// player. The popup disables the button at this bound; the keyboard
+	// command lands here and must behave the same way.
+	function forward()
 	{
-		if (activeSpeech) 
+		if (activeSpeech)
 		{
 			if (activeSpeech.canForward()) activeSpeech.forward();
-			else forwardPage();
 		}
 		else return Promise.reject(new Error("Can't forward, not active"));
 	}
 
-	function forwardPage() 
+	// method rewind. No-op at the first chunk, same reasoning as forward:
+	// the upstream page-rewind read a page that does not exist and ended
+	// playback.
+	function rewind()
 	{
-		return stop().then(function() { currentIndex++; readCurrent(); });
-	}
-
-	// method rewind
-	function rewind() 
-	{
-		if (activeSpeech) 
+		if (activeSpeech)
 		{
 			if (activeSpeech.canRewind()) activeSpeech.rewind();
-			else rewindPage();
 		}
 		else return Promise.reject(new Error("Can't rewind, not active"));
-	}
-
-	function rewindPage() 
-	{
-		return stop().then(function() { currentIndex--; readCurrent(true); });
 	}
 
 	function seek(n, offset)

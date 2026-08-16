@@ -69,6 +69,13 @@ body {
 .button-1:active {
   background-color: var(--background-default-pressed);
 }
+.button-1:disabled,
+.button-1:disabled:hover,
+.button-1:disabled:active {
+  color: var(--text-disabled);
+  background-color: transparent;
+  cursor: default;
+}
 #btnPlay, #btnPause {
   color: var(--text-base);
   background-color: var(--background-default-inverse-default);
@@ -217,9 +224,13 @@ body:not(.is-popup) #toolbar .btn-group.window-size {
   }
   #toolbar .btn:disabled,
   #toolbar .btn:disabled:hover,
-  #toolbar .btn:disabled:active {
+  #toolbar .btn:disabled:active,
+  .button-1:disabled,
+  .button-1:disabled:hover,
+  .button-1:disabled:active {
     color: GrayText;
     border-color: GrayText;
+    background-color: ButtonFace;
   }
   #highlight span.active {
     forced-color-adjust: none;
