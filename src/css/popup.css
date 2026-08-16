@@ -72,9 +72,10 @@ body {
    (accessibility spec: no animated progress for users who opted out). */
 .button-1.loading {
   position: relative;
-}
-.button-1.loading .material-icons {
-  visibility: hidden;
+  /* The icon glyph is the button's own text (the material-icons class sits
+     on the button, not a child), so it hides via font-size, which keeps
+     currentColor alive for the ring and the aria-label intact. */
+  font-size: 0;
 }
 .button-1.loading::after {
   content: "";
@@ -84,7 +85,7 @@ body {
   width: 18px;
   height: 18px;
   box-sizing: border-box;
-  border: 2px solid currentColor;
+  border: 3px solid currentColor;
   border-top-color: transparent;
   border-radius: 50%;
   animation: button-spin 1s linear infinite;
