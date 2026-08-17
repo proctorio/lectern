@@ -6,11 +6,13 @@ who rely on it.
 ## Where things happen
 
 Everything community-facing happens in this GitHub repository: issues,
-discussions, security reports, and pull requests. Maintainers review here.
-Accepted changes are landed through the project's internal integration
-process and appear on `main` with contributor attribution preserved
-(Co-authored-by), so a merged change may arrive as part of a synced commit
-rather than a direct button-merge of your branch.
+discussions, security reports, and pull requests. Maintainers review and
+merge pull requests right here. After a merge, an automated sync imports the
+change into the project's build system and republishes `main`, so expect the
+merged history to be normalized shortly after (your change and its
+attribution are preserved; commit hashes on `main` are not stable across
+that normalization, which is also why long-lived forks should rebase onto
+fresh `main` rather than merge it).
 
 ## Ground rules for changes
 
