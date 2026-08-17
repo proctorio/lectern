@@ -26,7 +26,7 @@ stages:
 - stage: pack
   jobs:
     - job: verify_and_pack
-      pool: standard-nanos
+      pool: build-device-pool
       workspace:
         clean: all
       steps:
