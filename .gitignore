@@ -47,3 +47,4 @@ dist/
 package-lock.json
 test-results/
 .e2e-dist/
+build/

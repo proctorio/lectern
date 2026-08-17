@@ -25,6 +25,14 @@ if [ ! -d "$TARGET" ]; then
   exit 2
 fi
 
+# Scan from inside the target so directory-name excludes (dist, build, docs)
+# can never swallow the target root itself: invoking this script as
+# "audit-remote-code.sh dist" previously matched --exclude-dir=dist against
+# the target and silently scanned nothing.
+DISPLAY_TARGET="$(cd "$TARGET" && pwd)"
+cd "$TARGET" || exit 2
+TARGET="."
+
 # Paths excluded from scanning. Attribution files are allowed to name upstream.
 EXCLUDES=(
   --exclude-dir=.git
@@ -72,14 +80,15 @@ EXCLUDES=(
 #   attribution headers inside vendored minified libraries. Comments, not code.
 # - stackoverflow.com, developer.chrome.com: source comments citing references.
 # - docs.google.com, onedrive.live.com, dropbox.com, officeapps.live.com,
-#   luoa.instructure.com, luoa-content.s3.amazonaws.com: URL match patterns
+#   luoa.instructure.com, *.instructure.com (canvas point-of-use origin
+#   pattern, phase 5), luoa-content.s3.amazonaws.com: URL match patterns
 #   and origin strings in js/content-handlers.js used to route per-site
 #   extractors and request point-of-use host permissions. Nothing is fetched
 #   from these strings; they are compared against tab and frame URLs.
 # - chromewebstore.google.com, addons.mozilla.org: unsupported-sites list in
 #   js/defaults.js, matched against tab URLs to show a friendly error.
 # - https?://*/ wildcards: manifest optional_host_permissions patterns.
-ALLOWLIST_REGEX='https://github\.com/ken107/read-aloud|https://opensource\.org/licenses/MIT|http://www\.w3\.org/|https://getbootstrap\.com|https://github\.com/twbs/bootstrap|https://github\.com/ReactiveX/RxJS|http://stackoverflow\.com|https://developer\.chrome\.com|https://docs\.google\.com/|https://onedrive\.live\.com/|https://www\.dropbox\.com/|https://(usc-)?word-edit\.officeapps\.live\.com/|https://luoa\.instructure\.com/|https://luoa-content\.s3\.amazonaws\.com/|https://chromewebstore\.google\.com|https://addons\.mozilla\.org|https?://\*/'
+ALLOWLIST_REGEX='https://github\.com/ken107/read-aloud|https://opensource\.org/licenses/MIT|http://www\.w3\.org/|https://getbootstrap\.com|https://github\.com/twbs/bootstrap|https://github\.com/ReactiveX/RxJS|http://stackoverflow\.com|https://developer\.chrome\.com|https://docs\.google\.com/|https://onedrive\.live\.com/|https://www\.dropbox\.com/|https://(usc-)?word-edit\.officeapps\.live\.com/|https://luoa\.instructure\.com/|https://\*\.instructure\.com/|https://luoa-content\.s3\.amazonaws\.com/|https://chromewebstore\.google\.com|https://addons\.mozilla\.org|https?://\*/'
 
 hr() { printf '%s\n' "----------------------------------------------------------------"; }
 
@@ -99,7 +108,7 @@ report() {
 }
 
 echo "Lectern remote code audit"
-echo "target: $(cd "$TARGET" && pwd)"
+echo "target: $DISPLAY_TARGET"
 echo
 
 # ---------------------------------------------------------------- 1. identity
