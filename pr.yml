@@ -17,3 +17,7 @@ stages:
   parameters:
     testing: true
     command: "build"
+    # vitest 4 / jsdom 30 need Node 22+; the agents' system Node is older
+    # (fails in the vitest forks pool). Parameter requires the
+    # core-templates nodeVersion change to be merged first.
+    nodeVersion: "24.x"
