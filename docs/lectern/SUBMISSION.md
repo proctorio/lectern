@@ -32,16 +32,13 @@ time, and what manual QA covers before or alongside review.
    page, a page being read). Produce fresh; never reuse upstream imagery.
    Promo tile: a draft exists at `docs/lectern/promo-tile-440x280-draft.png`;
    replace with commissioned art if available (open question 6).
-4. Privacy tab: policy text lives at `docs/lectern/PRIVACY.md` and is hosted
-   by the public GitHub repository; link
-   `https://github.com/proctorio/lectern/blob/main/docs/lectern/PRIVACY.md`.
-   Data disclosures: collects NOTHING; single purpose: reads page text
-   aloud. The disclosures must match the manifest, and they do.
-5. Homepage URL: `https://github.com/proctorio/lectern`. Support URL:
-   `https://github.com/proctorio/lectern/issues` (DECIDED: the GitHub
-   repository is the community front door for contact, issues, discussions,
-   and pull requests; issues reach maintainers, and the accessibility issue
-   template is the distinct accessibility path).
+4. Privacy tab: policy text is final in `docs/lectern/PRIVACY.md` except the
+   contact section; host it at a stable URL on a controlled domain (open
+   questions 2 and 3) and link it. Data disclosures: collects NOTHING; single
+   purpose: reads page text aloud. The disclosures must match the manifest,
+   and they do.
+5. Homepage URL and support URL (open questions 2 and 9; support must reach
+   a human, with a distinct path for accessibility issues).
 6. Before going live: USPTO confirmatory clearance on the name (open
    question 1; held alternates Rostrum, Sonant, Praelector).
 7. ON APPROVAL, SAME DAY: record the assigned extension ID in `FORK.md`
