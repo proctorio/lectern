@@ -44,7 +44,7 @@ import { registerMessageListener } from "./messaging.js";
 		}
 		else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
 		else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
-		else if (location.hostname.endsWith("acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
+		else if (location.hostname == "acrobatiq.com" || location.hostname.endsWith(".acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
 		else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
 		else if (location.hostname == "plus.pearson.com") return ["js/content/html-doc.js", "js/content/pearson.js"];
 		else if (location.hostname == "www.ixl.com") return ["js/content/ixl.js"];
