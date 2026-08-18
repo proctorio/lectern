@@ -5,38 +5,38 @@ var contentFrame = document.getElementById("section_iframe");
 var currentIndex = 0;
 
 lecternDoc = {
-	getCurrentIndex: function() 
+	getCurrentIndex: function()
 	{
 		return currentIndex = 0;
 	},
-	getTexts: function(index) 
+	getTexts: function(index)
 	{
 		var promise = Promise.resolve();
-		var rewind = function() 
+		var rewind = function()
 		{
 			var oldUrl = contentFrame.contentDocument.location.href;
-			$(prevBtn).click();
-			
+			prevBtn.click();
+
 			return waitFrameChange(oldUrl);
 		};
-		var forward = function() 
+		var forward = function()
 		{
 			var oldUrl = contentFrame.contentDocument.location.href;
-			$(nextBtn).click();
-			
+			nextBtn.click();
+
 			return waitFrameChange(oldUrl);
 		};
 		for (; currentIndex < index; currentIndex++) promise = promise.then(forward);
 		for (; currentIndex > index; currentIndex--) promise = promise.then(rewind);
-		
-		return promise.then(function() 
+
+		return promise.then(function()
 		{
 			return rad.getTexts(rad.getCurrentIndex());
 		});
 	}
 };
 
-function waitFrameChange(oldUrl) 
+function waitFrameChange(oldUrl)
 {
 	return repeat({
 		action: function() { return contentFrame.contentDocument.location.href; },
@@ -44,11 +44,13 @@ function waitFrameChange(oldUrl)
 		max: 20,
 		delay: 500
 	})
-		.then(function() 
+		.then(function()
 		{
-			return new Promise(function(fulfill) 
+			return new Promise(function(fulfill)
 			{
-				return $(contentFrame.contentDocument).ready(fulfill);
+				var frameDoc = contentFrame.contentDocument;
+				if (frameDoc.readyState == "loading") frameDoc.addEventListener("DOMContentLoaded", function() { fulfill(); }, {once: true});
+				else fulfill();
 			});
 		});
 }

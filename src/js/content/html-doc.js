@@ -1,26 +1,26 @@
-var lecternDoc = new function() 
+var lecternDoc = new function()
 {
 	var self = this;
 
 	this.ignoreTags = "select, textarea, button, label, audio, video, dialog, embed, menu, nav, noframes, noscript, object, script, style, svg, aside, footer, #footer, .no-lectern, [aria-hidden=true]";
 
-	this.getCurrentIndex = function() 
+	this.getCurrentIndex = function()
 	{
 		return 0;
 	};
 
-	this.getTexts = async function(index) 
+	this.getTexts = async function(index)
 	{
-		if (index == 0) 
+		if (index == 0)
 		{
 			const math = await getMath();
-			try 
+			try
 			{
 				if (math) math.show();
-				
+
 				return parse();
 			}
-			finally 
+			finally
 			{
 				if (math) math.hide();
 			}
@@ -28,22 +28,34 @@ var lecternDoc = new function()
 		else return null;
 	};
 
-	this.getSelectedText = async function() 
+	this.getSelectedText = async function()
 	{
 		const math = await getMath();
-		try 
+		try
 		{
 			if (math) math.show();
-			
+
 			return window.getSelection().toString().trim();
 		}
-		finally 
+		finally
 		{
 			if (math) math.hide();
 		}
 	};
 
-	function parse() 
+	// jQuery's :visible, byte for byte: the element consumes layout boxes.
+	// Extraction decisions must not drift from the years of upstream behavior
+	// built on this exact test.
+	function isVisible(elem)
+	{
+		return Boolean(elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length);
+	}
+
+	// The multi-block flag findTextBlocks hands to getTexts; jQuery's element
+	// data store used to carry it. A WeakSet never touches the page DOM.
+	var multiBlocks = new WeakSet();
+
+	function parse()
 	{
 		// find blocks containing text
 		var start = new Date();
@@ -51,7 +63,7 @@ var lecternDoc = new function()
 		var countChars = textBlocks.reduce(function(sum, elem) { return sum + getInnerText(elem).length; }, 0);
 		console.log("Found", textBlocks.length, "blocks", countChars, "chars in", new Date() - start, "ms");
 
-		if (countChars < 1000) 
+		if (countChars < 1000)
 		{
 			textBlocks = findTextBlocks(3);
 			var texts = textBlocks.map(getInnerText);
@@ -59,17 +71,17 @@ var lecternDoc = new function()
 
 			// trim the head and the tail
 			var head, tail;
-			for (var i = 3; i < texts.length && !head; i++) 
+			for (var i = 3; i < texts.length && !head; i++)
 			{
 				var dist = getGaussian(texts, 0, i);
 				if (texts[i].length > dist.mean + 2 * dist.stdev) head = i;
 			}
-			for (var i = texts.length - 4; i >= 0 && !tail; i--) 
+			for (var i = texts.length - 4; i >= 0 && !tail; i--)
 			{
 				var dist = getGaussian(texts, i + 1, texts.length);
 				if (texts[i].length > dist.mean + 2 * dist.stdev) tail = i + 1;
 			}
-			if (head || tail) 
+			if (head || tail)
 			{
 				textBlocks = textBlocks.slice(head || 0, tail);
 				console.log("Trimmed", head, tail);
@@ -89,74 +101,83 @@ var lecternDoc = new function()
 		return toRead.flatMap(getTexts).filter(isNotEmpty);
 	}
 
-	function findTextBlocks(threshold) 
+	function findTextBlocks(threshold)
 	{
 		var skipTags = "h1, h2, h3, h4, h5, h6, p, a[href], " + self.ignoreTags;
-		var isTextNode = function(node) 
+		var isTextNode = function(node)
 		{
 			return node.nodeType == 3 && node.nodeValue.trim().length >= 3;
 		};
-		var isParagraph = function(node) 
+		var isParagraph = function(node)
 		{
-			return node.nodeType == 1 && $(node).is("p:visible") && getInnerText(node).length >= threshold;
+			return node.nodeType == 1 && node.matches("p") && isVisible(node) && getInnerText(node).length >= threshold;
 		};
-		var hasTextNodes = function(elem) 
+		var hasTextNodes = function(elem)
 		{
 			return someChildNodes(elem, isTextNode) && getInnerText(elem).length >= threshold;
 		};
-		var hasParagraphs = function(elem) 
+		var hasParagraphs = function(elem)
 		{
 			return someChildNodes(elem, isParagraph);
 		};
-		var containsTextBlocks = function(elem) 
+		var unskippedChildren = function(elem)
 		{
-			var childElems = $(elem).children(":not(" + skipTags + ")").get();
-			
+			return Array.from(elem.children).filter(function(child) { return !child.matches(skipTags); });
+		};
+		var containsTextBlocks = function(elem)
+		{
+			var childElems = unskippedChildren(elem);
+
 			return childElems.some(hasTextNodes) || childElems.some(hasParagraphs) || childElems.some(containsTextBlocks);
 		};
-		var addBlock = function(elem, multi) 
+		var addBlock = function(elem, multi)
 		{
-			if (multi) $(elem).data("lectern-multi-block", true);
+			if (multi) multiBlocks.add(elem);
 			textBlocks.push(elem);
 		};
-		var walk = function() 
+		var walk = function(elem)
 		{
-			if ($(this).is("frame, iframe")) try { walk.call(this.contentDocument.body); }
+			if (elem.matches("frame, iframe")) try { walk(elem.contentDocument.body); }
 			catch (err) {}
-			else if ($(this).is("dl")) addBlock(this);
-			else if ($(this).is("ol, ul")) 
+			else if (elem.matches("dl")) addBlock(elem);
+			else if (elem.matches("ol, ul"))
 			{
-				var items = $(this).children().get();
-				if (items.some(hasTextNodes)) addBlock(this);
-				else if (items.some(hasParagraphs)) addBlock(this, true);
-				else if (items.some(containsTextBlocks)) addBlock(this, true);
+				var items = Array.from(elem.children);
+				if (items.some(hasTextNodes)) addBlock(elem);
+				else if (items.some(hasParagraphs)) addBlock(elem, true);
+				else if (items.some(containsTextBlocks)) addBlock(elem, true);
 			}
-			else if ($(this).is("tbody")) 
+			else if (elem.matches("tbody"))
 			{
-				var rows = $(this).children();
-				if (rows.length > 3 || rows.eq(0).children().length > 3) 
+				var rows = Array.from(elem.children);
+				if (rows.length > 3 || (rows[0] && rows[0].children.length > 3))
 				{
-					if (rows.get().some(containsTextBlocks)) addBlock(this, true);
+					if (rows.some(containsTextBlocks)) addBlock(elem, true);
 				}
-				else rows.each(walk);
+				else rows.forEach(walk);
 			}
-			else 
+			else
 			{
-				if (hasTextNodes(this)) addBlock(this);
-				else if (hasParagraphs(this)) addBlock(this, true);
-				else $(this).add(this.shadowRoot).children(":not(" + skipTags + ")").each(walk);
+				if (hasTextNodes(elem)) addBlock(elem);
+				else if (hasParagraphs(elem)) addBlock(elem, true);
+				else
+				{
+					var children = unskippedChildren(elem);
+					if (elem.shadowRoot) children = children.concat(Array.from(elem.shadowRoot.children).filter(function(child) { return !child.matches(skipTags); }));
+					children.forEach(walk);
+				}
 			}
 		};
 		var textBlocks = [];
-		walk.call(document.body);
-		
-		return textBlocks.filter(function(elem) 
+		walk(document.body);
+
+		return textBlocks.filter(function(elem)
 		{
-			return $(elem).is(":visible") && $(elem).offset().left >= 0;
+			return isVisible(elem) && elem.getBoundingClientRect().left + window.scrollX >= 0;
 		});
 	}
 
-	function getGaussian(texts, start, end) 
+	function getGaussian(texts, start, end)
 	{
 		if (start == undefined) start = 0;
 		if (end == undefined) end = texts.length;
@@ -165,7 +186,7 @@ var lecternDoc = new function()
 		var mean = sum / (end - start);
 		var variance = 0;
 		for (var i = start; i < end; i++) variance += (texts[i].length - mean) * (texts[i].length - mean);
-		
+
 		return {mean: mean,
 										stdev: Math.sqrt(variance)};
 	}
@@ -174,72 +195,101 @@ var lecternDoc = new function()
 	{
 		// Every temporary mutation must be reverted even when extraction throws
 		// mid-block: leaked surrogate spans or still-hidden answer labels would
-		// permanently alter visible exam content.
-		var toHide = $(elem).find(":visible").filter(dontRead).hide();
+		// permanently alter visible exam content. Hiding saves each element's
+		// prior inline display so restore is exact, the way jQuery's hide and
+		// show worked.
+		var hidden = Array.from(elem.querySelectorAll("*"))
+			.filter(function(node) { return isVisible(node) && dontRead(node); })
+			.map(hideAndRemember);
 		try
 		{
-			$(elem).find("ol, ul").addBack("ol, ul").each(addNumbering);
-			$(elem).find("fieldset").addBack("fieldset").each(addChoiceNumbering);
-			$(elem).find("img[alt]").filter(":visible").each(addAltText);
+			findWithSelf(elem, "ol, ul").forEach(addNumbering);
+			findWithSelf(elem, "fieldset").forEach(addChoiceNumbering);
+			Array.from(elem.querySelectorAll("img[alt]")).filter(isVisible).forEach(addAltText);
 
-			return $(elem).data("lectern-multi-block")
-				? $(elem).children(":visible").get().map(getText)
+			return multiBlocks.has(elem)
+				? Array.from(elem.children).filter(isVisible).map(getText)
 				: getText(elem).split(paragraphSplitter);
 		}
 		finally
 		{
-			$(elem).find(".lectern-numbering, .lectern-alt").remove();
-			toHide.show();
+			for (const surrogate of elem.querySelectorAll(".lectern-numbering, .lectern-alt")) surrogate.remove();
+			for (const entry of hidden) restoreDisplay(entry);
 		}
+	}
+
+	// Descendants matching the selector, preceded by the element itself when
+	// it matches (jQuery's find plus addBack, in document order).
+	function findWithSelf(elem, selector)
+	{
+		var result = elem.matches(selector) ? [elem] : [];
+
+		return result.concat(Array.from(elem.querySelectorAll(selector)));
 	}
 
 	// innerText never contains image alt text. Mirroring the math surrogate
 	// pattern, a temporary span carries the alt text at the image's position
 	// while the block is read, then is removed in the same cleanup pass.
-	function addAltText()
+	function addAltText(img)
 	{
-		var alt = ($(this).attr("alt") || "").trim();
-		if (alt) $("<span>").addClass("lectern-alt").text(" " + alt + " ").insertAfter(this);
+		var alt = (img.getAttribute("alt") || "").trim();
+		if (alt)
+		{
+			var span = document.createElement("span");
+			span.className = "lectern-alt";
+			span.textContent = " " + alt + " ";
+			img.after(span);
+		}
 	}
 
-	function addNumbering() 
+	function makeNumberingSpan(number)
 	{
-		var children = $(this).children();
-		var text = children.length ? getInnerText(children.get(0)) : null;
+		var span = document.createElement("span");
+		span.className = "lectern-numbering";
+		span.textContent = number + ". ";
+
+		return span;
+	}
+
+	function addNumbering(elem)
+	{
+		var children = Array.from(elem.children);
+		var text = children.length ? getInnerText(children[0]) : null;
 		if (text && !text.match(/^\(?(\d|[A-Za-z][).])/))
-			children.each(function(index) 
+		{
+			children.forEach(function(child, index)
 			{
-				$("<span>").addClass("lectern-numbering").text((index + 1) + ". ").prependTo(this);
+				child.prepend(makeNumberingSpan(index + 1));
 			});
+		}
 	}
 
-	function addChoiceNumbering()
+	function addChoiceNumbering(elem)
 	{
-		if (!isChoiceFieldset(this)) return;
-		$(this).find("label")
-			.filter(function()
+		if (!isChoiceFieldset(elem)) return;
+		Array.from(elem.querySelectorAll("label"))
+			.filter(function(label)
 			{
 				// nested choice fieldsets: a label already numbered by an outer
 				// fieldset pass is skipped, so numbering never double-applies
-				return isChoiceLabel(this) && $(this).is(":visible") &&
-					!$(this).children(".lectern-numbering").length;
+				return isChoiceLabel(label) && isVisible(label) &&
+					!label.querySelector(":scope > .lectern-numbering");
 			})
-			.each(function(index)
+			.forEach(function(label, index)
 			{
-				$("<span>").addClass("lectern-numbering").text((index + 1) + ". ").prependTo(this);
+				label.prepend(makeNumberingSpan(index + 1));
 			});
 	}
 
-	function dontRead()
+	function dontRead(elem)
 	{
-		var float = $(this).css("float");
-		var position = $(this).css("position");
+		var style = getComputedStyle(elem);
 
 		// Labels that carry radio or checkbox choice text are read; the bare
 		// "label" entry in ignoreTags only hides plain form labels.
-		var ignoreTags = isChoiceLabel(this) ? getIgnoreTagsWithoutLabel() : self.ignoreTags;
+		var ignoreTags = isChoiceLabel(elem) ? getIgnoreTagsWithoutLabel() : self.ignoreTags;
 
-		return $(this).is(ignoreTags) || isHiddenChoiceLegend(this) || $(this).is("sup") || float == "right" || position == "fixed";
+		return elem.matches(ignoreTags) || isHiddenChoiceLegend(elem) || elem.matches("sup") || style.float == "right" || style.position == "fixed";
 	}
 
 	var ignoreTagsWithoutLabel = {source: null,
@@ -267,18 +317,18 @@ var lecternDoc = new function()
 
 	function isChoiceLabel(elem)
 	{
-		if (!$(elem).is("label")) return false;
-		if ($(elem).find("input[type=radio], input[type=checkbox]").length) return true;
-		var forId = $(elem).attr("for");
+		if (!elem.matches("label")) return false;
+		if (elem.querySelector("input[type=radio], input[type=checkbox]")) return true;
+		var forId = elem.getAttribute("for");
 		if (!forId) return false;
 		var bound = elem.ownerDocument && elem.ownerDocument.getElementById(forId);
 
-		return Boolean(bound) && $(bound).is("input[type=radio], input[type=checkbox]");
+		return Boolean(bound) && bound.matches("input[type=radio], input[type=checkbox]");
 	}
 
 	function isChoiceFieldset(elem)
 	{
-		return $(elem).is("fieldset") && $(elem).find("input[type=radio], input[type=checkbox]").length > 0;
+		return Boolean(elem) && elem.matches("fieldset") && Boolean(elem.querySelector("input[type=radio], input[type=checkbox]"));
 	}
 
 	// Screen-reader-only legends inside a choice fieldset (the clip or offscreen
@@ -286,47 +336,45 @@ var lecternDoc = new function()
 	// convey, so they are excluded from the read text.
 	function isHiddenChoiceLegend(elem)
 	{
-		if (!$(elem).is("legend")) return false;
-		if (!isChoiceFieldset($(elem).closest("fieldset").get(0))) return false;
+		if (!elem.matches("legend")) return false;
+		if (!isChoiceFieldset(elem.closest("fieldset"))) return false;
 
 		return isScreenReaderOnly(elem);
 	}
 
 	function isScreenReaderOnly(elem)
 	{
-		var position = $(elem).css("position");
-		if (position != "absolute" && position != "fixed") return false;
-		var clip = $(elem).css("clip");
-		if (clip && clip != "auto") return true;
-		var clipPath = $(elem).css("clip-path");
-		if (clipPath && clipPath != "none") return true;
+		var style = getComputedStyle(elem);
+		if (style.position != "absolute" && style.position != "fixed") return false;
+		if (style.clip && style.clip != "auto") return true;
+		if (style.clipPath && style.clipPath != "none") return true;
 
 		return elem.offsetWidth <= 1 && elem.offsetHeight <= 1;
 	}
 
-	function getText(elem) 
+	function getText(elem)
 	{
 		return addMissingPunctuation(elem.innerText).trim();
 	}
 
-	function addMissingPunctuation(text) 
+	function addMissingPunctuation(text)
 	{
 		return text.replaceAll(/(\w)(\s*?\r?\n)/g, "$1.$2");
 	}
 
-	function findHeadingsFor(block, prevBlock) 
+	function findHeadingsFor(block, prevBlock)
 	{
 		var result = [];
-		var firstInnerElem = $(block).find("h1, h2, h3, h4, h5, h6, p").filter(":visible").get(0);
+		var firstInnerElem = Array.from(block.querySelectorAll("h1, h2, h3, h4, h5, h6, p")).filter(isVisible)[0];
 		var currentLevel = getHeadingLevel(firstInnerElem);
 		var node = previousNode(block, true);
-		while (node && node != prevBlock) 
+		while (node && node != prevBlock)
 		{
-			var ignore = $(node).is(self.ignoreTags);
-			if (!ignore && node.nodeType == 1 && $(node).is(":visible")) 
+			var ignore = node.nodeType == 1 && node.matches(self.ignoreTags);
+			if (!ignore && node.nodeType == 1 && isVisible(node))
 			{
 				var level = getHeadingLevel(node);
-				if (level < currentLevel) 
+				if (level < currentLevel)
 				{
 					result.push(node);
 					currentLevel = level;
@@ -334,36 +382,56 @@ var lecternDoc = new function()
 			}
 			node = previousNode(node, ignore);
 		}
-		
+
 		return result.reverse();
 	}
 
-	function getHeadingLevel(elem) 
+	function getHeadingLevel(elem)
 	{
 		var matches = elem && (/^h(\d)$/i).exec(elem.tagName);
-		
+
 		return matches ? Number(matches[1]) : 100;
 	}
 
-	function previousNode(node, skipChildren) 
+	function previousNode(node, skipChildren)
 	{
-		if ($(node).is("body")) return null;
+		if (node.nodeType == 1 && node.matches("body")) return null;
 		if (node.nodeType == 1 && !skipChildren && node.lastChild) return node.lastChild;
 		if (node.previousSibling) return node.previousSibling;
 		if (node.parentNode) return previousNode(node.parentNode, true);
-		
+
 		return null;
 	}
 
-	function someChildNodes(elem, test) 
+	function someChildNodes(elem, test)
 	{
 		var child = elem.firstChild;
-		while (child) 
+		while (child)
 		{
 			if (test(child)) return true;
 			child = child.nextSibling;
 		}
-		
+
 		return false;
 	}
+
+	// Hides a node remembering its exact prior state: the inline display value
+	// AND whether a style attribute existed at all, so the restore leaves the
+	// DOM byte-identical (a leftover empty style attribute is still a change).
+	function hideAndRemember(node)
+	{
+		var entry = {node: node,
+															hadStyleAttr: node.hasAttribute("style"),
+															priorDisplay: node.style.display};
+		node.style.display = "none";
+
+		return entry;
+	}
+
+	function restoreDisplay(entry)
+	{
+		if (entry.hadStyleAttr) entry.node.style.display = entry.priorDisplay;
+		else entry.node.removeAttribute("style");
+	}
+
 };

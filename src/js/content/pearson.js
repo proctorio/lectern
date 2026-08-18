@@ -1,52 +1,57 @@
-var $prevBtn = $("svg.leftArrow").closest("button");
-var $nextBtn = $("svg.rightArrow").closest("button");
+function findNavButton(arrowSelector, labelSelector)
+{
+	var arrow = document.querySelector(arrowSelector);
+	var button = arrow && arrow.closest("button");
 
-if ($prevBtn.length == 0) $prevBtn = $("button[aria-label^=prev]");
-if ($nextBtn.length == 0) $nextBtn = $("button[aria-label^=next]");
+	return button || document.querySelector(labelSelector);
+}
+
+var prevBtn = findNavButton("svg.leftArrow", "button[aria-label^=prev]");
+var nextBtn = findNavButton("svg.rightArrow", "button[aria-label^=next]");
 
 var rad = lecternDoc;
 var currentIndex = 0;
 
 lecternDoc = {
-	getCurrentIndex() 
+	getCurrentIndex()
 	{
 		return currentIndex = 0;
 	},
-	async getTexts(index) 
+	async getTexts(index)
 	{
-		while (currentIndex < index) 
+		while (currentIndex < index)
 		{
-			if ($nextBtn.length == 0) return null;
+			if (!nextBtn) return null;
 			const promise = waitFrameChange();
-			$nextBtn.click();
+			nextBtn.click();
 			await promise;
 			currentIndex++;
 		}
-		while (currentIndex > index) 
+		while (currentIndex > index)
 		{
-			if ($prevBtn.length == 0) return null;
+			if (!prevBtn) return null;
 			const promise = waitFrameChange();
-			$prevBtn.click();
+			prevBtn.click();
 			await promise;
 			currentIndex--;
 		}
-		
+
 		return rad.getTexts(rad.getCurrentIndex());
 	}
 };
 
-function waitFrameChange() 
+function waitFrameChange()
 {
-	return new Promise(fulfill => 
+	return new Promise(fulfill =>
 	{
 		const oldFrame = document.getElementById("contentIframe");
-		const observer = new MutationObserver(() => 
+		const observer = new MutationObserver(() =>
 		{
 			const newFrame = document.getElementById("contentIframe");
-			if (newFrame && newFrame != oldFrame) 
+			if (newFrame && newFrame != oldFrame)
 			{
 				observer.disconnect();
-				$(newFrame).on("load", fulfill);
+				newFrame.addEventListener("load", fulfill, {once: true});
 			}
 		});
 		observer.observe(document.getElementById("viewer"), {childList: true});

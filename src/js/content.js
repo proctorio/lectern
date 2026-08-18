@@ -22,7 +22,7 @@ import { registerMessageListener } from "./messaging.js";
 
 	function getLang() 
 	{
-		var lang = document.documentElement.lang || $("html").attr("xml:lang");
+		var lang = document.documentElement.lang || document.documentElement.getAttribute("xml:lang");
 		if (lang) lang = lang.split(",", 1)[0].replaceAll("_", "-");
 		
 		return lang;
@@ -34,15 +34,15 @@ import { registerMessageListener } from "./messaging.js";
 		{
 			if ((/^\/presentation\/d\//).test(location.pathname)) return ["js/content/google-slides.js"];
 			else if ((/\/document\/d\//).test(location.pathname)) return ["js/content/googleDocsUtil.js", "js/content/google-doc.js"];
-			else if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
+			else if (document.querySelector(".drive-viewer-paginated-scrollable")) return ["js/content/google-drive-doc.js"];
 			else return ["js/content/html-doc.js"];
 		}
 		else if (location.hostname == "drive.google.com") 
 		{
-			if ($(".drive-viewer-paginated-scrollable").length) return ["js/content/google-drive-doc.js"];
+			if (document.querySelector(".drive-viewer-paginated-scrollable")) return ["js/content/google-drive-doc.js"];
 			else return ["js/content/google-drive-preview.js"];
 		}
-		else if (location.hostname == "onedrive.live.com" && $(".OneUp-pdf--loaded").length) return ["js/content/onedrive-doc.js"];
+		else if (location.hostname == "onedrive.live.com" && document.querySelector(".OneUp-pdf--loaded")) return ["js/content/onedrive-doc.js"];
 		else if (location.hostname.endsWith(".khanacademy.org")) return ["js/content/khan-academy.js"];
 		else if (location.hostname == "acrobatiq.com" || location.hostname.endsWith(".acrobatiq.com")) return ["js/content/html-doc.js", "js/content/acrobatiq.js"];
 		else if (location.hostname == "digital.wwnorton.com") return ["js/content/html-doc.js", "js/content/wwnorton.js"];
@@ -165,11 +165,19 @@ import { registerMessageListener } from "./messaging.js";
 
 export var paragraphSplitter = /(?:\s*\r?\n\s*){2,}/;
 
-export function getInnerText(elem) 
+export function getInnerText(elem)
 {
 	var text = elem.innerText;
-	
+
 	return text ? text.trim() : "";
+}
+
+// jQuery's :visible test, byte for byte (the element consumes layout
+// boxes), shared by the site handlers so extraction decisions never drift
+// from the upstream behavior built on it.
+export function isElementVisible(elem)
+{
+	return Boolean(elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length);
 }
 
 export function isNotEmpty(text) 

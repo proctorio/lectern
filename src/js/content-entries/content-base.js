@@ -1,6 +1,6 @@
 import { brapi } from "../brapi.js";
 import { getSettings, updateSettings, waitMillis, repeat } from "../defaults.js";
-import { paragraphSplitter, getInnerText, isNotEmpty, fixParagraphs, tryGetTexts, simulateMouseEvent, simulateClick, getMath } from "../content.js";
+import { paragraphSplitter, getInnerText, isNotEmpty, isElementVisible, fixParagraphs, tryGetTexts, simulateMouseEvent, simulateClick, getMath } from "../content.js";
 
 // The per-site handler files under js/content/ stay classic scripts and are
 // injected separately, so everything they consume must remain a global in the
@@ -15,6 +15,7 @@ globalThis.repeat = repeat;
 globalThis.paragraphSplitter = paragraphSplitter;
 globalThis.getInnerText = getInnerText;
 globalThis.isNotEmpty = isNotEmpty;
+globalThis.isElementVisible = isElementVisible;
 globalThis.fixParagraphs = fixParagraphs;
 globalThis.tryGetTexts = tryGetTexts;
 globalThis.simulateMouseEvent = simulateMouseEvent;

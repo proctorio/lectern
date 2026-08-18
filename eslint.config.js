@@ -27,6 +27,8 @@ export default [
 		files: ["src/js/**/*.js"],
 		languageOptions: {
 			globals: {
+				// $ is dead once the vanilla UI refactor lands alongside this
+				// branch; remove it in the post-merge sweep.
 				"$": "readonly",
 				"lecternDoc": "readonly"
 			}
@@ -85,7 +87,8 @@ export default [
 			"promise/always-return": "off",
 			"promise/catch-or-return": "off",
 			"promise/no-promise-in-callback": "off",
-			"no-unused-vars": ["error", { "args": "none", "caughtErrors": "none" }],
+			"no-unused-vars": ["error", { "args": "none",
+																																	"caughtErrors": "none" }],
 			"max-statements-per-line": "off",
 			"require-await": "off",
 			"require-atomic-updates": "off",
@@ -125,11 +128,11 @@ export default [
 		languageOptions: {
 			sourceType: "script",
 			globals: {
-				"$": "readonly",
 				"lecternDoc": "writable",
 				"googleDocsUtil": "writable",
 				"getInnerText": "readonly",
 				"isNotEmpty": "readonly",
+				"isElementVisible": "readonly",
 				"fixParagraphs": "readonly",
 				"tryGetTexts": "readonly",
 				"simulateClick": "readonly",

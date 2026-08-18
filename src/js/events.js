@@ -383,7 +383,6 @@ async function injectContentScript(tab, frameId, extraScripts)
 			frameIds: frameId ? [frameId] : undefined
 		},
 		files: [
-			"js/vendor/jquery-3.7.1.min.js",
 			"js/content-entries/content-base.js"
 		]
 	});
