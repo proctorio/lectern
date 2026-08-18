@@ -1,6 +1,6 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, escapeHtml, isMobileOS, bgPageInvoke, effectiveShowHighlighting, setI18nText, playbackAnnouncementKey, isActivationKey } from "./defaults.js";
+import { defaults, getQueryString, getSettings, updateSettings, getCurrentTab, getActiveTab, updateTab, updateWindow, createWindow, domReady, formatError, isMobileOS, bgPageInvoke, effectiveShowHighlighting, setI18nText, playbackAnnouncementKey, isActivationKey } from "./defaults.js";
 import { splitChunkIntoParagraphs } from "./paragraphs.js";
 import { registerMessageListener } from "./messaging.js";
 
@@ -8,15 +8,15 @@ var queryString = getQueryString();
 const playerCheckIn$ = new rxjs.Subject();
 
 registerMessageListener("popup", {
-	playerCheckIn() 
+	playerCheckIn()
 	{
 		playerCheckIn$.next();
 	}
 });
 
-$(function() 
+domReady().then(function()
 {
-	if (queryString.isPopup) $("body").addClass("is-popup");
+	if (queryString.isPopup) document.body.classList.add("is-popup");
 	else getCurrentTab().then(function(currentTab) { return updateSettings({sourceTabId: currentTab.id}); });
 });
 
@@ -34,11 +34,11 @@ getSettings(["showHighlighting", "sourceTabId", "examSafeMode"]).then(async sett
 	}
 }).catch(handleError);
 
-async function popout(tabId) 
+async function popout(tabId)
 {
 	const activeTab = await getActiveTab();
 	const url = brapi.runtime.getURL("popup.html?tab=" + activeTab.id);
-	try 
+	try
 	{
 		if (!tabId) throw "Create";
 		const tab = await updateTab(tabId, {url,
@@ -46,7 +46,7 @@ async function popout(tabId)
 		await updateWindow(tab.windowId, {focused: true}).catch(console.error);
 		window.close();
 	}
-	catch (err) 
+	catch (err)
 	{
 		await createWindow({
 			url,
@@ -59,60 +59,80 @@ async function popout(tabId)
 	}
 }
 
+function byId(id)
+{
+	return document.getElementById(id);
+}
+
+// Shows or hides an element the way the display toggle always worked here:
+// clearing the inline display restores whatever the stylesheet says.
+function setShown(elem, shown)
+{
+	elem.style.display = shown ? "" : "none";
+}
+
 async function init()
 {
 	await domReady();
 
 	setI18nText();
-	$("#btnPlay").click(onPlay);
-	$("#btnPause").click(onPause);
-	$("#btnStop").click(onStop);
-	$("#btnSettings").click(onSettings);
-	$("#btnForward").click(onForward);
-	$("#btnRewind").click(onRewind);
-	$("#decrease-font-size").click(changeFontSize.bind(null, -1));
-	$("#increase-font-size").click(changeFontSize.bind(null, +1));
-	$("#decrease-window-size").click(changeWindowSize.bind(null, -1));
-	$("#increase-window-size").click(changeWindowSize.bind(null, +1));
-	$("#toggle-dark-mode").click(toggleDarkMode);
+	byId("btnPlay").addEventListener("click", onPlay);
+	byId("btnPause").addEventListener("click", onPause);
+	byId("btnStop").addEventListener("click", onStop);
+	byId("btnSettings").addEventListener("click", onSettings);
+	byId("btnForward").addEventListener("click", onForward);
+	byId("btnRewind").addEventListener("click", onRewind);
+	byId("decrease-font-size").addEventListener("click", changeFontSize.bind(null, -1));
+	byId("increase-font-size").addEventListener("click", changeFontSize.bind(null, +1));
+	byId("decrease-window-size").addEventListener("click", changeWindowSize.bind(null, -1));
+	byId("increase-window-size").addEventListener("click", changeWindowSize.bind(null, +1));
+	byId("toggle-dark-mode").addEventListener("click", toggleDarkMode);
 
 	refreshSize();
 }
 
-function handleError(err) 
+function handleError(err)
 {
 	if (!err) return;
 	if (err.name == "CancellationException") return;
 
-	if ((/^{/).test(err.message)) 
+	const status = byId("status");
+	if ((/^{/).test(err.message))
 	{
 		var errInfo = JSON.parse(err.message);
 
-		$("#status").html(formatError(errInfo)).show();
-		$("#status a").click(function() 
+		// formatError produces trusted extension-authored markup (i18n
+		// strings with action links), never page content.
+		status.innerHTML = formatError(errInfo);
+		setShown(status, true);
+		for (const link of status.querySelectorAll("a"))
 		{
-			switch ($(this).attr("href")) 
+			link.addEventListener("click", function()
 			{
-				case "#open-extension-settings":
-					brapi.tabs.create({url: "chrome://extensions/?id=" + brapi.runtime.id});
-					break;
-				case "#request-permissions":
-					brapi.permissions.request(errInfo.perms)
-						.then(function(granted) 
-						{
-							if (granted) 
+				switch (this.getAttribute("href"))
+				{
+					case "#open-extension-settings":
+						brapi.tabs.create({url: "chrome://extensions/?id=" + brapi.runtime.id});
+						break;
+					case "#request-permissions":
+						brapi.permissions.request(errInfo.perms)
+							.then(function(granted)
 							{
-								if (errInfo.reload) return reloadAndPlay();
-								else $("#btnPlay").click();
-							}
-						});
-					break;
-			}
-		});
+								if (granted)
+								{
+									if (errInfo.reload) return reloadAndPlay();
+									else byId("btnPlay").click();
+								}
+							});
+						break;
+				}
+			});
+		}
 	}
-	else 
+	else
 	{
-		$("#status").text(err.message).show();
+		status.textContent = err.message;
+		setShown(status, true);
 	}
 }
 
@@ -121,6 +141,11 @@ rxjs.concat(domReady(), rxjs.interval(500)).subscribe(updateButtons);
 // The last playback state the poll observed, so the live region announces
 // transitions only, never every poll tick.
 var lastPlaybackState = null;
+
+// The transcript state the highlight rendering last saw; jQuery's element
+// data store used to carry these.
+var highlightTexts = null;
+var highlightPosition = null;
 
 async function updateButtons()
 {
@@ -137,58 +162,57 @@ async function updateButtons()
 
 	const announcementKey = playbackAnnouncementKey(lastPlaybackState, state);
 	lastPlaybackState = state;
-	if (announcementKey) $("#playback-status").text(brapi.i18n.getMessage(announcementKey));
+	if (announcementKey) byId("playback-status").textContent = brapi.i18n.getMessage(announcementKey);
 
-	$("#btnSettings").toggle(state == "STOPPED");
-	$("#btnPlay").toggle(state == "PAUSED" || state == "STOPPED");
+	setShown(byId("btnSettings"), state == "STOPPED");
+	const btnPlay = byId("btnPlay");
+	setShown(btnPlay, state == "PAUSED" || state == "STOPPED");
 
 	// The play button resumes while paused, so its accessible name must
 	// track that behavior change (accessibility spec: do not label a button
 	// "play" and change its behavior to pause/resume without changing the
 	// accessible name). Only write the attribute when it actually changes.
 	const playLabel = brapi.i18n.getMessage(state == "PAUSED" ? "popup_resume_label" : "popup_play_label");
-	if ($("#btnPlay").attr("aria-label") != playLabel) $("#btnPlay").attr("aria-label", playLabel);
+	if (btnPlay.getAttribute("aria-label") != playLabel) btnPlay.setAttribute("aria-label", playLabel);
 
 	// The full transport appears as one stable row the moment loading
 	// starts (no layout jump when the voice comes up); the pause button
 	// doubles as the loading indicator via a spinner ring, and pressing it
 	// while loading pauses the pending playback.
-	$("#btnPause").toggle(state == "PLAYING" || state == "LOADING").toggleClass("loading", state == "LOADING");
-	$("#btnStop").toggle(state == "PAUSED" || state == "PLAYING" || state == "LOADING");
-	$("#btnForward, #btnRewind").toggle(state == "PLAYING" || state == "PAUSED" || state == "LOADING");
+	const btnPause = byId("btnPause");
+	setShown(btnPause, state == "PLAYING" || state == "LOADING");
+	btnPause.classList.toggle("loading", state == "LOADING");
+	setShown(byId("btnStop"), state == "PAUSED" || state == "PLAYING" || state == "LOADING");
+	setShown(byId("btnForward"), state == "PLAYING" || state == "PAUSED" || state == "LOADING");
+	setShown(byId("btnRewind"), state == "PLAYING" || state == "PAUSED" || state == "LOADING");
 
 	// Transport bounds mirror document.js: rewind and forward are no-ops at
 	// the first and last chunk, so the buttons disable there. On a short
 	// page both can disable at once, hence the stop-button focus fallback.
 	const atFirstChunk = !speech || speech.position.index <= 0;
 	const atLastChunk = !speech || speech.position.index >= speech.texts.length - 1;
-	setStepButtonDisabled("#btnRewind", atFirstChunk, ["#btnForward", "#btnStop"]);
-	setStepButtonDisabled("#btnForward", atLastChunk, ["#btnRewind", "#btnStop"]);
+	setStepButtonDisabled("btnRewind", atFirstChunk, ["btnForward", "btnStop"]);
+	setStepButtonDisabled("btnForward", atLastChunk, ["btnRewind", "btnStop"]);
 
-	if (showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech)
-	{
-		$("#highlight, #toolbar").show();
-		updateHighlighting(speech);
-	}
-	else
-	{
-		$("#highlight, #toolbar").hide();
-	}
+	const showSurfaces = Boolean(showHighlighting && (state == "LOADING" || state == "PAUSED" || state == "PLAYING") && speech);
+	setShown(byId("highlight"), showSurfaces);
+	setShown(byId("toolbar"), showSurfaces);
+	if (showSurfaces) updateHighlighting(speech);
 	applyPopupWidth(settings);
 }
 
 function updateHighlighting(speech)
 {
-	var elem = $("#highlight");
-	if (!elem.data("texts") ||
-    elem.data("texts").length != speech.texts.length ||
-    elem.data("texts").some((text, i) => text != speech.texts[i])
+	const elem = byId("highlight");
+	if (!highlightTexts ||
+    highlightTexts.length != speech.texts.length ||
+    highlightTexts.some((text, i) => text != speech.texts[i])
 	)
 	{
-		elem.css("direction", speech.isRTL ? "rtl" : "")
-			.data({texts: speech.texts,
-										position: null})
-			.empty();
+		elem.style.direction = speech.isRTL ? "rtl" : "";
+		highlightTexts = speech.texts;
+		highlightPosition = null;
+		elem.replaceChildren();
 
 		// One clickable span per PARAGRAPH, not per TTS chunk: chunks may
 		// merge several short paragraphs, and clicking the second paragraph
@@ -203,44 +227,47 @@ function updateHighlighting(speech)
 		{
 			paragraphNumber++;
 			const seek = onSeek.bind(null, entry.chunkIndex, entry.offset);
-			makeSpan(entry.text)
-				.css("cursor", "pointer")
-				.data("chunkIndex", entry.chunkIndex)
-				.attr({
-					role: "button",
-					tabindex: 0,
-					title: brapi.i18n.getMessage("popup_read_paragraph_label", [String(paragraphNumber)])
-				})
-				.click(seek)
-				.on("keydown", function(event)
+			const span = makeSpan(entry.text);
+			span.style.cursor = "pointer";
+			span.dataset.chunkIndex = String(entry.chunkIndex);
+			span.setAttribute("role", "button");
+			span.setAttribute("tabindex", "0");
+			span.setAttribute("title", brapi.i18n.getMessage("popup_read_paragraph_label", [String(paragraphNumber)]));
+			span.addEventListener("click", seek);
+			span.addEventListener("keydown", function(event)
+			{
+				if (isActivationKey(event.key))
 				{
-					if (isActivationKey(event.key))
-					{
-						event.preventDefault();
-						seek();
-					}
-				})
-				.appendTo(elem);
+					event.preventDefault();
+					seek();
+				}
+			});
+			elem.appendChild(span);
 		}
 	}
 
 	const pos = speech.position;
-	if (!elem.data("position") || positionDiffers(elem.data("position"), pos))
+	if (!highlightPosition || positionDiffers(highlightPosition, pos))
 	{
-		elem.data("position", pos);
-		elem.find(".active").removeClass("active").removeAttr("aria-current");
+		highlightPosition = pos;
+		for (const active of elem.querySelectorAll(".active"))
+		{
+			active.classList.remove("active");
+			active.removeAttribute("aria-current");
+		}
 
 		// Playback position is chunk-granular (the whole chunk is one
 		// utterance), so every paragraph span of the active chunk highlights,
 		// which matches the old one-span-per-chunk visual exactly. The
 		// active group also carries aria-current plus a border in CSS, so
 		// the playing position is never conveyed by color alone.
-		const group = elem.children().filter(function()
+		const group = Array.from(elem.children).filter(child => Number(child.dataset.chunkIndex) == pos.index);
+		for (const child of group)
 		{
-			return $(this).data("chunkIndex") == pos.index;
-		});
-		group.addClass("active").attr("aria-current", "true");
-		if (group.length) scrollIntoView(group.first(), elem);
+			child.classList.add("active");
+			child.setAttribute("aria-current", "true");
+		}
+		if (group.length) scrollIntoView(group[0], elem);
 	}
 }
 
@@ -260,94 +287,104 @@ function mapParagraphs(texts)
 	return entries;
 }
 
-function makeSpan(text) 
+function makeSpan(text)
 {
-	const html = escapeHtml(text).replaceAll(/\r?\n/g, "<br/>");
-	
-	return $("<span>").html(html);
+	// Text nodes plus <br> elements: no markup interpretation of page text.
+	const span = document.createElement("span");
+	const lines = text.split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++)
+	{
+		if (i > 0) span.appendChild(document.createElement("br"));
+		span.appendChild(document.createTextNode(lines[i]));
+	}
+
+	return span;
 }
 
-function positionDiffers(left, right) 
+function positionDiffers(left, right)
 {
-	function rangeDiffers(a, b) 
+	function rangeDiffers(a, b)
 	{
 		if (a == null && b == null) return false;
 		if (a != null && b != null) return a.startIndex != b.startIndex || a.endIndex != b.endIndex;
-		
+
 		return true;
 	}
-	
+
 	return left.index != right.index ||
     rangeDiffers(left.paragraph, right.paragraph) ||
     rangeDiffers(left.sentence, right.sentence) ||
     rangeDiffers(left.word, right.word);
 }
 
-function scrollIntoView(child, scrollParent) 
+function scrollIntoView(child, scrollParent)
 {
-	const childTop = child.offset().top - scrollParent.offset().top;
-	const childBottom = childTop + child.outerHeight();
-	if (childTop < 0 || childBottom >= scrollParent.height())
-		var target = scrollParent[0].scrollTop + childTop - 10;
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) scrollParent[0].scrollTop = target;
-	else scrollParent.animate({scrollTop: target});
+	const childTop = child.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top;
+	const childBottom = childTop + child.offsetHeight;
+	if (childTop < 0 || childBottom >= scrollParent.clientHeight)
+	{
+		const target = scrollParent.scrollTop + childTop - 10;
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) scrollParent.scrollTop = target;
+		else scrollParent.scrollTo({top: target,
+																														behavior: "smooth"});
+	}
 }
 
 var currentPlayRequestId;
 
-function onPlay() 
+function onPlay()
 {
-	$("#status").hide();
+	setShown(byId("status"), false);
 	const requestId = currentPlayRequestId = Math.random();
 	bgPageInvoke("getPlaybackState")
-		.then(function(stateInfo) 
+		.then(function(stateInfo)
 		{
 			if (stateInfo.state == "PAUSED") return bgPageInvoke("resume");
 			else return bgPageInvoke("playTab", queryString.tab ? [Number(queryString.tab)] : []);
 		})
 		.then(updateButtons)
-		.catch(err => 
+		.catch(err =>
 		{
 			if (requestId == currentPlayRequestId) handleError(err);
 			else console.debug("Ignoring error from an earlier request", err);
 		});
 }
 
-function reloadAndPlay() 
+function reloadAndPlay()
 {
-	$("#status").hide();
+	setShown(byId("status"), false);
 	bgPageInvoke("reloadAndPlayTab", queryString.tab ? [Number(queryString.tab)] : [])
 		.then(updateButtons)
 		.catch(handleError);
 }
 
-function onPause() 
+function onPause()
 {
 	bgPageInvoke("pause")
 		.then(updateButtons)
 		.catch(handleError);
 }
 
-function onStop() 
+function onStop()
 {
 	bgPageInvoke("stop")
 		.then(updateButtons)
 		.catch(handleError);
 }
 
-function onSettings() 
+function onSettings()
 {
 	location.href = "options.html?referer=popup.html";
 }
 
-function onForward() 
+function onForward()
 {
 	bgPageInvoke("forward")
 		.then(updateButtons)
 		.catch(handleError);
 }
 
-function onRewind() 
+function onRewind()
 {
 	bgPageInvoke("rewind")
 		.then(updateButtons)
@@ -393,13 +430,12 @@ function refreshSize()
 	return getSettings(["highlightFontSize", "highlightWindowSize"])
 		.then(function(settings)
 		{
-			$("#highlight").css({
-				"font-size": getFontSize(settings)
-			});
+			const highlight = byId("highlight");
+			highlight.style.fontSize = getFontSize(settings);
 			updateSizeButtons(settings);
 			if (queryString.isPopup)
 			{
-				$("#highlight").css({height: getWindowSize(settings)[1]});
+				highlight.style.height = getWindowSize(settings)[1] + "px";
 				applyPopupWidth(settings);
 			}
 		});
@@ -411,30 +447,30 @@ function refreshSize()
 // buttons leave the tab order).
 function setStepButtonDisabled(id, disabled, counterpartIds)
 {
-	var button = $(id);
-	if (disabled && button.is(":focus"))
+	const button = byId(id);
+	if (disabled && document.activeElement == button)
 	{
 		for (const counterpartId of counterpartIds)
 		{
-			var counterpart = $(counterpartId);
-			if (counterpart.is(":visible") && !counterpart.prop("disabled"))
+			const counterpart = byId(counterpartId);
+			if (counterpart.checkVisibility() && !counterpart.disabled)
 			{
-				counterpart.trigger("focus");
+				counterpart.focus();
 				break;
 			}
 		}
 	}
-	button.prop("disabled", disabled);
+	button.disabled = disabled;
 }
 
 function updateSizeButtons(settings)
 {
 	var fontSize = settings.highlightFontSize || defaults.highlightFontSize;
 	var windowSize = settings.highlightWindowSize || defaults.highlightWindowSize;
-	setStepButtonDisabled("#decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], ["#increase-font-size"]);
-	setStepButtonDisabled("#increase-font-size", fontSize >= FONT_SIZE_RANGE[1], ["#decrease-font-size"]);
-	setStepButtonDisabled("#decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], ["#increase-window-size"]);
-	setStepButtonDisabled("#increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], ["#decrease-window-size"]);
+	setStepButtonDisabled("decrease-font-size", fontSize <= FONT_SIZE_RANGE[0], ["increase-font-size"]);
+	setStepButtonDisabled("increase-font-size", fontSize >= FONT_SIZE_RANGE[1], ["decrease-font-size"]);
+	setStepButtonDisabled("decrease-window-size", windowSize <= WINDOW_SIZE_RANGE[0], ["increase-window-size"]);
+	setStepButtonDisabled("increase-window-size", windowSize >= WINDOW_SIZE_RANGE[1], ["decrease-window-size"]);
 }
 
 // The toolbar popup window follows an explicit width set on BOTH html and
@@ -450,8 +486,9 @@ var IDLE_POPUP_WIDTH = 250;
 function applyPopupWidth(settings)
 {
 	if (!queryString.isPopup || isMobileOS()) return;
-	const width = $("#highlight").is(":visible") ? getWindowSize(settings)[0] : IDLE_POPUP_WIDTH;
-	$("html, body").css("width", width);
+	const width = byId("highlight").checkVisibility() ? getWindowSize(settings)[0] : IDLE_POPUP_WIDTH;
+	document.documentElement.style.width = width + "px";
+	document.body.style.width = width + "px";
 }
 
 function getFontSize(settings)
@@ -479,7 +516,7 @@ function getWindowSize(settings)
 	}
 }
 
-function toggleDarkMode() 
+function toggleDarkMode()
 {
 	const darkMode = document.body.classList.toggle("dark-mode");
 	updateSettings({darkMode});

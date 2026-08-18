@@ -494,11 +494,12 @@ export function polyfills()
 /**
  * HELPERS
  */
-export function domReady() 
+export function domReady()
 {
-	return new Promise(function(fulfill) 
+	return new Promise(function(fulfill)
 	{
-		$(fulfill);
+		if (document.readyState == "loading") document.addEventListener("DOMContentLoaded", () => fulfill(), {once: true});
+		else fulfill();
 	});
 }
 
@@ -540,22 +541,21 @@ export function playbackAnnouncementKey(previousState, state)
 
 export function setI18nText()
 {
-	$("[data-i18n]").each(function()
+	for (const elem of document.querySelectorAll("[data-i18n]"))
 	{
-		var key = $(this).data("i18n");
-		var text = brapi.i18n.getMessage(key);
-		if ($(this).is("input")) $(this).val(text);
-		else $(this).text(text);
-	});
+		const text = brapi.i18n.getMessage(elem.dataset.i18n);
+		if (elem.matches("input")) elem.value = text;
+		else elem.textContent = text;
+	}
 
 	// Icon-only controls carry their accessible name in data-i18n-label so
 	// the visible icon glyph is never the announced name (accessibility
 	// spec: all controls have accessible names, icon-only buttons get
 	// aria-label).
-	$("[data-i18n-label]").each(function()
+	for (const elem of document.querySelectorAll("[data-i18n-label]"))
 	{
-		$(this).attr("aria-label", brapi.i18n.getMessage($(this).data("i18nLabel")));
-	});
+		elem.setAttribute("aria-label", brapi.i18n.getMessage(elem.dataset.i18nLabel));
+	}
 }
 
 export function escapeHtml(text) 

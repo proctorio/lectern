@@ -385,89 +385,101 @@ rxjs.combineLatest(
 		
 		return langs.length ? langs : [];
 	});
-	var isSelected = function() 
+	const isSelected = elem => selectedLangs.includes(elem.dataset.lang);
+	for (const checkbox of document.querySelectorAll("input[data-lang]"))
 	{
-		return selectedLangs.includes($(this).data("lang"));
-	};
-	$("input[data-lang]").filter(isSelected).prop("checked", true);
+		if (isSelected(checkbox)) checkbox.checked = true;
+	}
 
-	$(".voice-list").hide().filter(isSelected).show();
-	$(".voice-list").each(function() 
+	for (const list of document.querySelectorAll(".voice-list"))
 	{
-		var preferredVoice = settings.preferredVoices && settings.preferredVoices[$(this).data("lang")];
-		if (preferredVoice) $("input[type=radio][data-voice='" + preferredVoice + "']", this).prop("checked", true);
-		else $("input[type=radio]:first", this).prop("checked", true);
-	});
+		list.style.display = isSelected(list) ? "" : "none";
+		const preferredVoice = settings.preferredVoices && settings.preferredVoices[list.dataset.lang];
+		const radio = (preferredVoice && list.querySelector("input[type=radio][data-voice='" + CSS.escape(preferredVoice) + "']")) ||
+			list.querySelector("input[type=radio]");
+		if (radio) radio.checked = true;
+	}
 
 	// event hooks
-	$("input[data-lang]").click(function() 
+	for (const checkbox of document.querySelectorAll("input[data-lang]"))
 	{
-		$(".voice-list[data-lang=" + $(this).data("lang") + "]").toggle(this.checked);
-		saveLanguages();
-	});
-	$(".voice-list").change(function() 
+		checkbox.addEventListener("click", function()
+		{
+			const list = document.querySelector(".voice-list[data-lang='" + CSS.escape(this.dataset.lang) + "']");
+			if (list) list.style.display = this.checked ? "" : "none";
+			saveLanguages();
+		});
+	}
+	for (const list of document.querySelectorAll(".voice-list"))
 	{
-		savePreferredVoices();
-	});
+		list.addEventListener("change", savePreferredVoices);
+	}
 });
 
-function createCheckboxes(voices) 
+function makeElement(tag, attrs, parent)
 {
-	$("#lang-list").empty();
+	const elem = document.createElement(tag);
+	for (const [key, value] of Object.entries(attrs || {}))
+	{
+		if (key == "text") elem.textContent = value;
+		else if (key == "class") elem.className = value;
+		else elem.setAttribute(key, value);
+	}
+	if (parent) parent.appendChild(elem);
+
+	return elem;
+}
+
+function createCheckboxes(voices)
+{
+	const langListElem = document.getElementById("lang-list");
+	langListElem.replaceChildren();
 
 	const voicesForLang = groupVoicesByLang(voices);
-	for (var item of langList) 
+	for (const item of langList)
 	{
 		if (!voicesForLang[item.code]) continue;
 
-		var div = $("<div>").addClass("form-check").appendTo("#lang-list");
-		var label = $("<label>").addClass("form-check-label").appendTo(div);
-		$("<input>").attr("type", "checkbox").addClass("form-check-input").attr("data-lang", item.code).appendTo(label);
-		$("<span>").text(item.name).appendTo(label);
+		let div = makeElement("div", {class: "form-check"}, langListElem);
+		let label = makeElement("label", {class: "form-check-label"}, div);
+		makeElement("input", {type: "checkbox",
+																								class: "form-check-input",
+																								"data-lang": item.code}, label);
+		makeElement("span", {text: item.name}, label);
 
-		div = $("<div>").addClass("form-check voice-list").attr("data-lang", item.code).appendTo("#lang-list");
-		label = $("<label>").addClass("form-check-label d-block").appendTo(div);
-		$("<input>").attr("type", "radio").attr("name", item.code).appendTo(label);
-		$("<span>").text("Auto select").appendTo(label);
-		for (var voice of voicesForLang[item.code]) 
+		div = makeElement("div", {class: "form-check voice-list",
+																												"data-lang": item.code}, langListElem);
+		label = makeElement("label", {class: "form-check-label d-block"}, div);
+		makeElement("input", {type: "radio",
+																								name: item.code}, label);
+		makeElement("span", {text: "Auto select"}, label);
+		for (const voice of voicesForLang[item.code].concat(voicesForLang["<any>"] || []))
 		{
-			label = $("<label>").addClass("form-check-label d-block").appendTo(div);
-			$("<input>").attr("type", "radio").attr("name", item.code).attr("data-voice", voice.voiceName).appendTo(label);
-			$("<span>").text(voice.voiceName).appendTo(label);
-		}
-		for (voice of voicesForLang["<any>"] || [])
-		{
-			label = $("<label>").addClass("form-check-label d-block").appendTo(div);
-			$("<input>").attr("type", "radio").attr("name", item.code).attr("data-voice", voice.voiceName).appendTo(label);
-			$("<span>").text(voice.voiceName).appendTo(label);
+			label = makeElement("label", {class: "form-check-label d-block"}, div);
+			makeElement("input", {type: "radio",
+																									name: item.code,
+																									"data-voice": voice.voiceName}, label);
+			makeElement("span", {text: voice.voiceName}, label);
 		}
 	}
 }
 
-function saveLanguages() 
+function saveLanguages()
 {
 	updateSettings({
-		languages: $("input[data-lang]:checked")
-			.get()
-			.map(function(elem) { return $(elem).data("lang"); })
+		languages: Array.from(document.querySelectorAll("input[data-lang]:checked"))
+			.map(elem => elem.dataset.lang)
 			.join(",")
 	});
 }
 
-function savePreferredVoices() 
+function savePreferredVoices()
 {
 	updateSettings({
-		preferredVoices: $(".voice-list")
-			.get()
+		preferredVoices: Array.from(document.querySelectorAll(".voice-list"))
 			.groupBy(
-				function(elem) 
-				{
-					return $(elem).data("lang");
-				},
-				function(accum, elem) 
-				{
-					return $("input[type=radio]:checked", elem).data("voice");
-				}
+				elem => elem.dataset.lang,
+				(accum, elem) => elem.querySelector("input[type=radio]:checked")?.dataset.voice
 			)
 	});
 }

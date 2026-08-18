@@ -1,14 +1,14 @@
 import { getSettings, updateSettings, domReady, setI18nText } from "./defaults.js";
 
-Promise.all([getSettings(), domReady()]).then(([settings]) => 
+Promise.all([getSettings(), domReady()]).then(([settings]) =>
 {
 	setI18nText();
 
-	$("#fix-bt-silence-gap")
-		.prop("checked", settings.fixBtSilenceGap)
-		.change(function() 
-		{
-			updateSettings({fixBtSilenceGap: this.checked})
-				.catch(console.error);
-		});
+	const checkbox = document.getElementById("fix-bt-silence-gap");
+	checkbox.checked = Boolean(settings.fixBtSilenceGap);
+	checkbox.addEventListener("change", function()
+	{
+		updateSettings({fixBtSilenceGap: this.checked})
+			.catch(console.error);
+	});
 });

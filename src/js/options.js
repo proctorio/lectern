@@ -4,15 +4,33 @@ import { defaults, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, 
 import { registerMessageListener } from "./messaging.js";
 import { voices$ } from "./tts-engines.js";
 
-(function() 
+(function()
 {
 	const domReadyPromise = domReady();
 	const playerCheckIn$ = new rxjs.Subject();
 
-	domReadyPromise.then(() => $("#about-version").text(brapi.runtime.getManifest().version));
+	function byId(id)
+	{
+		return document.getElementById(id);
+	}
+
+	// Shows or hides an element. Elements hidden by a stylesheet rule need an
+	// explicit display value to show (clearing the inline style would fall
+	// back to the hiding rule), so callers pass one where that applies.
+	function setShown(elem, shown, displayWhenShown)
+	{
+		elem.style.display = shown ? (displayWhenShown || "") : "none";
+	}
+
+	function isShown(elem)
+	{
+		return getComputedStyle(elem).display != "none";
+	}
+
+	domReadyPromise.then(() => byId("about-version").textContent = brapi.runtime.getManifest().version);
 
 	registerMessageListener("options", {
-		playerCheckIn() 
+		playerCheckIn()
 		{
 			playerCheckIn$.next();
 		}
@@ -24,46 +42,44 @@ import { voices$ } from "./tts-engines.js";
 
 	// hotkey
 	domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
-			$("#hotkeys-link")
-				.click(function()
-				{
-					brapi.tabs.create({url: getHotkeySettingsUrl()});
-				})
-				.on("keydown", function(event)
-				{
-					// Links activate on Enter only; the click path is reused.
-					if (event.key == "Enter") $(this).click();
-				});
+			const link = byId("hotkeys-link");
+			link.addEventListener("click", function()
+			{
+				brapi.tabs.create({url: getHotkeySettingsUrl()});
+			});
+			link.addEventListener("keydown", function(event)
+			{
+				// Links activate on Enter only; the click path is reused.
+				if (event.key == "Enter") this.click();
+			});
 		});
 
 	// voice
 	domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
-			$("#voices")
-				.change(function() 
-				{
-					var voiceName = $(this).val();
-					if (voiceName == "@languages") brapi.tabs.create({url: "languages.html"});
-					else updateSettings({voiceName});
-				});
-			$("#languages-edit-button")
-				.click(function() 
-				{
-					brapi.tabs.create({url: "languages.html"});
-				});
+			byId("voices").addEventListener("change", function()
+			{
+				var voiceName = this.value;
+				if (voiceName == "@languages") brapi.tabs.create({url: "languages.html"});
+				else updateSettings({voiceName});
+			});
+			byId("languages-edit-button").addEventListener("click", function()
+			{
+				brapi.tabs.create({url: "languages.html"});
+			});
 		});
 
 	const voicesPopulatedObservable = rxjs.combineLatest([
 		voices$,
 		observeSetting("languages"),
-		brapi.i18n.getAcceptLanguages().catch(err => 
+		brapi.i18n.getAcceptLanguages().catch(err =>
 		{
-			console.error(err); 
+			console.error(err);
 
-			return []; 
+			return [];
 		}),
 		domReadyPromise
 	]).pipe(
@@ -72,42 +88,44 @@ import { voices$ } from "./tts-engines.js";
 	);
 
 	rxjs.combineLatest([observeSetting("voiceName"), voicesPopulatedObservable])
-		.subscribe(([voiceName]) => 
+		.subscribe(([voiceName]) =>
 		{
-			$("#voices").val(voiceName || "");
+			byId("voices").value = voiceName || "";
 		});
 
 	// rate
 	const rateSliderPromise = domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
-			const slider = createSlider($("#rate").get(0), {
-				onChange(value) 
+			const ratePow = () => Number(byId("rate").dataset.pow);
+			const slider = createSlider(byId("rate"), {
+				onChange(value)
 				{
-					const rate = Math.pow($("#rate").data("pow"), value);
-					updateSetting("rate" + $("#voices").val(), Number(rate.toFixed(3)));
+					const rate = Math.pow(ratePow(), value);
+					updateSetting("rate" + byId("voices").value, Number(rate.toFixed(3)));
 				},
-				formatValue(value) 
+				formatValue(value)
 				{
-					return Math.pow($("#rate").data("pow"), value).toFixed(2) + "x";
+					return Math.pow(ratePow(), value).toFixed(2) + "x";
 				}
 			});
-			$("#rate-edit-button")
-				.click(function() 
-				{
-					$("#rate, #rate-input-div").toggle();
-				});
-			$("#rate-input")
-				.change(function() 
-				{
-					var val = $(this).val().trim();
-					if (isNaN(val)) $(this).val(1);
-					else if (val < 0.1) $(this).val(0.1);
-					else if (val > 10) $(this).val(10);
-					else $("#rate-edit-button").hide();
-					updateSetting("rate" + $("#voices").val(), Number($(this).val()));
-				});
-			
+			byId("rate-edit-button").addEventListener("click", function()
+			{
+				// Swaps between the slider and the free-form input; both are
+				// stylesheet-driven, so showing needs an explicit display.
+				setShown(byId("rate"), !isShown(byId("rate")));
+				setShown(byId("rate-input-div"), !isShown(byId("rate-input-div")), "block");
+			});
+			byId("rate-input").addEventListener("change", function()
+			{
+				var val = this.value.trim();
+				if (isNaN(val)) this.value = 1;
+				else if (val < 0.1) this.value = 0.1;
+				else if (val > 10) this.value = 10;
+				else setShown(byId("rate-edit-button"), false);
+				updateSetting("rate" + byId("voices").value, Number(this.value));
+			});
+
 			return slider;
 		});
 
@@ -118,23 +136,23 @@ import { voices$ } from "./tts-engines.js";
 		);
 
 	rxjs.combineLatest([rateObservable, rateSliderPromise])
-		.subscribe(([rate, slider]) => 
+		.subscribe(([rate, slider]) =>
 		{
-			slider.setValue(Math.log(rate || defaults.rate) / Math.log($("#rate").data("pow")));
-			$("#rate-input").val(rate || defaults.rate);
+			slider.setValue(Math.log(rate || defaults.rate) / Math.log(Number(byId("rate").dataset.pow)));
+			byId("rate-input").value = rate || defaults.rate;
 		});
 
 	rxjs.combineLatest([observeSetting("voiceName"), rateObservable, domReadyPromise])
-		.subscribe(([voiceName, rate]) => 
+		.subscribe(([voiceName, rate]) =>
 		{
-			$("#rate-warning").toggle(rate > 2);
+			setShown(byId("rate-warning"), rate > 2, "block");
 		});
 
 	// pitch
 	const pitchSliderPromise = domReadyPromise
-		.then(() => 
-			createSlider($("#pitch").get(0), {
-				onChange(value) 
+		.then(() =>
+			createSlider(byId("pitch"), {
+				onChange(value)
 				{
 					updateSettings({pitch: value});
 				}
@@ -145,9 +163,9 @@ import { voices$ } from "./tts-engines.js";
 
 	// volume
 	const volumeSliderPromise = domReadyPromise
-		.then(() => 
-			createSlider($("#volume").get(0), {
-				onChange(value) 
+		.then(() =>
+			createSlider(byId("volume"), {
+				onChange(value)
 				{
 					updateSettings({volume: value});
 				}
@@ -160,45 +178,43 @@ import { voices$ } from "./tts-engines.js";
 	domReadyPromise
 		.then(() =>
 		{
-			$("#show-highlighting")
-				.change(function()
-				{
-					updateSettings({showHighlighting: $(this).val()});
-				});
+			byId("show-highlighting").addEventListener("change", function()
+			{
+				updateSettings({showHighlighting: this.value});
+			});
 		});
 
 	// The displayed value collapses the window choice to the popup while
 	// exam-safe mode is on (milestone M5); the stored preference is kept.
 	rxjs.combineLatest([observeSetting("showHighlighting"), observeSetting("examSafeMode"), domReadyPromise])
-		.subscribe(([showHighlighting, examSafeMode]) => $("#show-highlighting").val(effectiveShowHighlighting(showHighlighting || defaults.showHighlighting, examSafeMode)));
+		.subscribe(([showHighlighting, examSafeMode]) => byId("show-highlighting").value = String(effectiveShowHighlighting(showHighlighting || defaults.showHighlighting, examSafeMode)));
 
 	// exam-safe mode (milestone M5): reads the active tab only, never opens
 	// windows, and keeps overlay announcements on.
 	domReadyPromise
 		.then(() =>
 		{
-			$("#exam-safe-mode")
-				.change(function()
-				{
-					updateSettings({examSafeMode: this.checked});
-				});
+			byId("exam-safe-mode").addEventListener("change", function()
+			{
+				updateSettings({examSafeMode: this.checked});
+			});
 		});
 
 	rxjs.combineLatest([observeSetting("examSafeMode"), domReadyPromise])
 		.subscribe(([examSafeMode]) =>
 		{
-			$("#exam-safe-mode").prop("checked", Boolean(examSafeMode));
+			byId("exam-safe-mode").checked = Boolean(examSafeMode);
 
 			// The window highlighting surface opens a popout window, which
 			// exam-safe mode forbids; hide the choice while the mode is on.
-			$("#show-highlighting option[value='2']")
-				.prop("disabled", Boolean(examSafeMode))
-				.toggle(!examSafeMode);
+			const windowOption = document.querySelector("#show-highlighting option[value='2']");
+			windowOption.disabled = Boolean(examSafeMode);
+			setShown(windowOption, !examSafeMode);
 		});
 
 	// voiceTest
 	const demoSpeech = {
-		get(lang) 
+		get(lang)
 		{
 			return Promise.resolve({text: "This is a sample of the selected voice reading aloud."});
 		}
@@ -212,14 +228,14 @@ import { voices$ } from "./tts-engines.js";
 						() => state == "STOPPED",
 
 						// play
-						rxjs.defer(() => 
+						rxjs.defer(() =>
 							voices$.pipe(rxjs.take(1))).pipe(
-							rxjs.exhaustMap(voices => 
+							rxjs.exhaustMap(voices =>
 							{
-								const voiceName = $("#voices").val();
+								const voiceName = byId("voices").value;
 								const voice = voiceName && findVoiceByName(voices, voiceName);
 								const {lang} = parseLang(voice && getFirstLanguage(voice) || "en-US");
-								
+
 								return rxjs.defer(() => demoSpeech.get(lang)).pipe(rxjs.exhaustMap(({text}) => bgPageInvoke("playText", [text, {lang}])));
 							}),
 							rxjs.exhaustMap(() =>
@@ -236,64 +252,61 @@ import { voices$ } from "./tts-engines.js";
 			),
 			rxjs.startWith({state: "STOPPED"})
 		))).subscribe({
-		next({state, playbackError}) 
+		next({state, playbackError})
 		{
-			$("#test-voice .spinner").toggle(state == "LOADING");
-			$("#test-voice [data-i18n]").text(brapi.i18n.getMessage(state == "STOPPED" ? "options_test_button" : "options_stop_button"));
+			setShown(document.querySelector("#test-voice .spinner"), state == "LOADING");
+			document.querySelector("#test-voice [data-i18n]").textContent = brapi.i18n.getMessage(state == "STOPPED" ? "options_test_button" : "options_stop_button");
 			if (state == "STOPPED" && playbackError) handleError(playbackError);
-			else $("#status").parent().hide();
+			else setShown(byId("status").parentElement, false);
 		},
 		error: handleError
 	});
 
 	// buttons
 	domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
-			$("#test-voice").click(() => voiceTestSubject.next());
-			$("#reset")
-				.click(function() 
-				{
-					clearSettings();
-				});
+			byId("test-voice").addEventListener("click", () => voiceTestSubject.next());
+			byId("reset").addEventListener("click", function()
+			{
+				clearSettings();
+			});
 		});
 
 	// status
 	domReadyPromise
-		.then(() => 
+		.then(() =>
 		{
-			$("#status").parent().hide();
+			setShown(byId("status").parentElement, false);
 		});
 
+	var confirmationTimer;
 	settingsChange$
-		.subscribe(() => 
+		.subscribe(() =>
 		{
 			showConfirmation();
 			bgPageInvoke("stop").catch(err => "OK");
 		});
 
-	function populateVoices(allVoices, settings, acceptLangs) 
+	function populateVoices(allVoices, settings, acceptLangs)
 	{
-		$("#voices").empty();
-		$("<option>")
-			.val("")
-			.text("Auto select")
-			.appendTo("#voices");
+		const select = byId("voices");
+		select.replaceChildren(new Option("Auto select", ""));
 
 		// get voices filtered by selected languages
-		var selectedLangs = immediate(() => 
+		var selectedLangs = immediate(() =>
 		{
 			if (settings.languages) return settings.languages.split(",");
 			if (settings.languages == "") return null;
 			const accept = new Set(acceptLangs.map(x => x.split("-", 1)[0]));
 			const langs = Object.keys(groupVoicesByLang(allVoices)).filter(x => accept.has(x));
-			
+
 			return langs.length ? langs : null;
 		});
-		var voices = !selectedLangs ? allVoices : allVoices.filter(function(voice) 
+		var voices = !selectedLangs ? allVoices : allVoices.filter(function(voice)
 		{
 			const voiceLanguages = getVoiceLanguages(voice);
-			
+
 			return !voiceLanguages ||
           voiceLanguages.map(parseLang).some(({ lang }) => selectedLangs.includes(lang));
 		});
@@ -304,122 +317,123 @@ import { voices$ } from "./tts-engines.js";
 				offline: [],
 				standard: []
 			},
-			voices.groupBy(function(voice) 
+			voices.groupBy(function(voice)
 			{
 				if (isOfflineVoice(voice)) return "offline";
-				
+
 				return "standard";
 			})
 		);
 		for (var name in groups) groups[name].sort(voiceSorter);
 
-		// create the offline optgroup
-		const offline = $("<optgroup>")
-			.attr("label", brapi.i18n.getMessage("options_voicegroup_offline"))
-			.appendTo($("#voices"));
-		for (const voice of groups.offline) 
+		function makeGroup(label)
 		{
-			$("<option>")
-				.val(voice.voiceName)
-				.text(voice.voiceName)
-				.appendTo(offline);
+			const group = document.createElement("optgroup");
+			if (label) group.setAttribute("label", label);
+			select.appendChild(group);
+
+			return group;
+		}
+
+		// create the offline optgroup
+		const offline = makeGroup(brapi.i18n.getMessage("options_voicegroup_offline"));
+		for (const voice of groups.offline)
+		{
+			offline.appendChild(new Option(voice.voiceName, voice.voiceName));
 		}
 
 		// create the standard optgroup
-		$("<optgroup>").appendTo($("#voices"));
-		var standard = $("<optgroup>")
-			.attr("label", brapi.i18n.getMessage("options_voicegroup_standard"))
-			.appendTo($("#voices"));
-		groups.standard.forEach(function(voice) 
+		makeGroup();
+		const standard = makeGroup(brapi.i18n.getMessage("options_voicegroup_standard"));
+		for (const voice of groups.standard)
 		{
-			$("<option>")
-				.val(voice.voiceName)
-				.text(voice.voiceName)
-				.appendTo(standard);
-		});
+			standard.appendChild(new Option(voice.voiceName, voice.voiceName));
+		}
 
 		// create the additional optgroup
-		$("<optgroup>").appendTo($("#voices"));
-		var additional = $("<optgroup>")
-			.attr("label", brapi.i18n.getMessage("options_voicegroup_additional"))
-			.appendTo($("#voices"));
-		$("<option>")
-			.val("@languages")
-			.text(brapi.i18n.getMessage("options_add_more_languages"))
-			.appendTo(additional);
+		makeGroup();
+		const additional = makeGroup(brapi.i18n.getMessage("options_voicegroup_additional"));
+		additional.appendChild(new Option(brapi.i18n.getMessage("options_add_more_languages"), "@languages"));
 	}
 
-	function voiceSorter(a, b) 
+	function voiceSorter(a, b)
 	{
 		return a.voiceName.localeCompare(b.voiceName);
 	}
 
-	function showConfirmation() 
+	// The saved confirmation appears for a moment next to the buttons. The
+	// design system defines no motion, so this is an instant show and hide
+	// in both motion preferences (reduced motion gets the identical
+	// treatment by construction).
+	function showConfirmation()
 	{
-		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+		const check = document.querySelector(".green-check");
+		clearTimeout(confirmationTimer);
+		setShown(check, true, "inline-block");
+		confirmationTimer = setTimeout(function() { setShown(check, false); }, 1000);
+	}
+
+	function handleError(err)
+	{
+		const status = byId("status");
+		if ((/^{/).test(err.message))
 		{
-			$(".green-check").finish().show();
-			setTimeout(function() { $(".green-check").hide(); }, 1000);
+			var errInfo = JSON.parse(err.message);
+
+			// formatError produces trusted extension-authored markup (i18n
+			// strings with action links), never page content.
+			status.innerHTML = formatError(errInfo);
 		}
 		else
 		{
-			$(".green-check").finish().show().delay(500).fadeOut();
+			status.textContent = err.message;
 		}
+		setShown(status.parentElement, true);
 	}
 
-	function handleError(err) 
-	{
-		if ((/^{/).test(err.message)) 
-		{
-			var errInfo = JSON.parse(err.message);
-			$("#status").html(formatError(errInfo)).parent().show();
-		}
-		else 
-		{
-			$("#status").text(err.message).parent().show();
-		}
-	}
-
-	function createSlider(elem, {onChange, onSlideChange, formatValue}) 
+	function createSlider(elem, {onChange, onSlideChange, formatValue})
 	{
 		// A native range input provides the slider role, keyboard operation,
 		// and forced-colors rendering for free. Positions are integer steps;
 		// aria-valuetext carries the effective value so assistive tech never
 		// hears the raw step number.
-		var min = $(elem).data("min") || 0;
-		var max = $(elem).data("max") || 1;
-		var steps = $(elem).data("steps") || 20;
+		var min = Number(elem.dataset.min) || 0;
+		var max = Number(elem.dataset.max) || 1;
+		var steps = Number(elem.dataset.steps) || 20;
 		var format = formatValue || function(value) { return String(Math.round(value * 100) / 100); };
-		var $input = $("<input type='range'>")
-			.attr({min: 0,
-										max: steps,
-										step: 1});
-		var labelId = $(elem).data("label");
-		if (labelId) $input.attr("aria-labelledby", labelId);
-		$(elem).empty().toggleClass("slider", true).append($input);
+		const input = document.createElement("input");
+		input.type = "range";
+		input.min = 0;
+		input.max = steps;
+		input.step = 1;
+		var labelId = elem.dataset.label;
+		if (labelId) input.setAttribute("aria-labelledby", labelId);
+		elem.classList.add("slider");
+		elem.replaceChildren(input);
 
-		$input.on("input", function() 
+		input.addEventListener("input", function()
 		{
 			var value = toValue(Number(this.value));
-			$input.attr("aria-valuetext", format(value));
+			input.setAttribute("aria-valuetext", format(value));
 			if (onSlideChange) onSlideChange(value);
 		});
-		$input.on("change", function() 
+		input.addEventListener("change", function()
 		{
 			var value = toValue(Number(this.value));
-			$input.attr("aria-valuetext", format(value));
+			input.setAttribute("aria-valuetext", format(value));
 			onChange(value);
 		});
 
 		return {
-			setValue(value) 
+			setValue(value)
 			{
 				var position = Math.round((Math.min(value, max) - min) / (max - min) * steps);
-				$input.val(position).attr("aria-valuetext", format(toValue(position)));
+				input.value = position;
+				input.setAttribute("aria-valuetext", format(toValue(position)));
 			}
 		};
 
-		function toValue(position) 
+		function toValue(position)
 		{
 			return min + (position / steps) * (max - min);
 		}
