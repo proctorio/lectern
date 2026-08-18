@@ -27,9 +27,6 @@ export default [
 		files: ["src/js/**/*.js"],
 		languageOptions: {
 			globals: {
-				// $ is dead once the vanilla UI refactor lands alongside this
-				// branch; remove it in the post-merge sweep.
-				"$": "readonly",
 				"lecternDoc": "readonly"
 			}
 		},
