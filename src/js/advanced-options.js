@@ -3,9 +3,6 @@ import { getSettings, updateSettings, domReady, setI18nText } from "./defaults.j
 Promise.all([getSettings(), domReady()]).then(([settings]) => 
 {
 	setI18nText();
-	$("button.close")
-		.show()
-		.click(() => history.back());
 
 	$("#fix-bt-silence-gap")
 		.prop("checked", settings.fixBtSilenceGap)

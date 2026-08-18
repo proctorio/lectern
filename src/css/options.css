@@ -16,9 +16,7 @@ body {
   max-width: 640px;
 }
 
-/* Section card: the secondary surface over the page's base surface. clear
-   keeps the floated close button (shown when the page is reached from the
-   popup) above the first card instead of overlapping it. */
+/* Section card: the secondary surface over the page's base surface. */
 .card {
   background-color: var(--background-surface-secondary);
   border: 1px solid var(--border-secondary);
@@ -26,7 +24,6 @@ body {
   box-shadow: var(--shadow-sm);
   padding: var(--space-16);
   margin-bottom: var(--space-8);
-  clear: both;
 }
 
 /* Footer row of a card: divider plus quiet links, the RDS support-section
@@ -58,28 +55,6 @@ body {
 }
 #expand-button:focus-visible {
   opacity: 1;
-}
-
-button.close {
-  padding: 0;
-  background-color: transparent;
-  border: 0;
-  -webkit-appearance: none;
-  display: none;
-}
-.close {
-  float: right;
-  font-size: 1.5rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--text-caption);
-}
-.close:not(:disabled) {
-  cursor: pointer;
-}
-.close:hover {
-  color: var(--text-default);
-  text-decoration: none;
 }
 
 h1 {

@@ -1,12 +1,11 @@
 import { brapi } from "./brapi.js";
 import * as rxjs from "./vendor/rxjs.js";
-import { defaults, getQueryString, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke, effectiveShowHighlighting } from "./defaults.js";
+import { defaults, domReady, setI18nText, getHotkeySettingsUrl, updateSettings, updateSetting, clearSettings, observeSetting, settingsChange$, immediate, groupVoicesByLang, getVoiceLanguages, getFirstLanguage, isOfflineVoice, findVoiceByName, parseLang, formatError, bgPageInvoke, effectiveShowHighlighting } from "./defaults.js";
 import { registerMessageListener } from "./messaging.js";
 import { voices$ } from "./tts-engines.js";
 
 (function() 
 {
-	const queryString = getQueryString();
 	const domReadyPromise = domReady();
 	const playerCheckIn$ = new rxjs.Subject();
 
@@ -22,20 +21,6 @@ import { voices$ } from "./tts-engines.js";
 	// i18n
 	domReadyPromise
 		.then(setI18nText);
-
-	// close button
-	domReadyPromise
-		.then(() => 
-		{
-			if (queryString.referer) 
-			{
-				$("button.close").show()
-					.click(function() 
-					{
-						history.back();
-					});
-			}
-		});
 
 	// hotkey
 	domReadyPromise
