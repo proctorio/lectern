@@ -6,7 +6,7 @@
  * are bundled (they must run as classic scripts, so their ESM sources are
  * flattened to IIFE), and only when content entry points exist.
  */
-import { cpSync, rmSync, mkdirSync, existsSync } from "node:fs";
+import { cpSync, rmSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { buildSync } from "esbuild";
 
 const CONTENT_ENTRIES = "src/js/content-entries";
@@ -14,6 +14,12 @@ const CONTENT_ENTRIES = "src/js/content-entries";
 rmSync("dist", { recursive: true, force: true });
 mkdirSync("dist", { recursive: true });
 cpSync("src", "dist", { recursive: true });
+
+// The MIT attribution ships in every artifact. dist/ must be self-contained
+// because the release flow zips it directly (the Plumbing version-pack
+// pipeline), not only through tools/package.js.
+copyFileSync("LICENSE", "dist/LICENSE");
+copyFileSync("NOTICE", "dist/NOTICE");
 
 if (existsSync(CONTENT_ENTRIES))
 {

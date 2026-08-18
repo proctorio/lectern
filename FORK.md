@@ -21,7 +21,8 @@ Operational record. Not a legal requirement, but keep it current.
 | Product name | Lectern |
 | Repository | https://github.com/proctorio/lectern |
 | Publisher | Proctor.io Incorporated, 7340 E Main St, Scottsdale, AZ |
-| Chrome Web Store ID | FILL IN AFTER FIRST PUBLISH. Never change this. |
+| Chrome Web Store ID (Beta channel) | jnchlbdjpliafjnppcmhfjogpajfejjl. Never change this. |
+| Chrome Web Store ID (Production channel) | FILL IN when the production application is approved. Never change this. |
 | License | MIT (retains upstream copyright, see LICENSE) |
 
 ## Divergence policy
@@ -70,4 +71,4 @@ all of them. Do not change it. Do not republish under a new listing.
 
 | Date | ID | Note |
 |---|---|---|
-| FILL IN | FILL IN | Initial publish |
+| 2026-08-18 | jnchlbdjpliafjnppcmhfjogpajfejjl | Initial publish, approved and public. Designated the BETA channel: its uploads carry the "Lectern Beta" name once the release pipeline runs; the clean name is reserved for the production listing (separate application, ID pending). |
